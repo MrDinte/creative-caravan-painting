@@ -1,5 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { SignJWT, jwtVerify } from "jose";
+import { findStaffByUsername } from "./db";
+import { verifyPassword } from "./password";
+import type { AccessLevel } from "./types";
 
 // Lightweight session auth using signed JWT cookies (jose).
 // Two roles: "admin" (staff dashboard) and "customer" (portal, scoped to one job).
@@ -15,6 +18,24 @@ const CUSTOMER_COOKIE = "ccp_customer";
 export interface AdminSession {
   role: "admin";
   name: string;
+  staffId: string; // "" for the environment owner account
+  accessLevel: AccessLevel;
+}
+
+/** Sections only a full-access user may open. */
+export const ADMIN_ONLY_PATHS = [
+  "/admin/staff",
+  "/admin/prices",
+  "/admin/quotes",
+  "/admin/enquiries",
+] as const;
+
+export function canAccessPath(
+  session: AdminSession,
+  pathname: string
+): boolean {
+  if (session.accessLevel === "admin") return true;
+  return !ADMIN_ONLY_PATHS.some((p) => pathname.startsWith(p));
 }
 
 export interface CustomerSession {
@@ -58,15 +79,37 @@ async function baseCookieOptions() {
 const ADMIN_USER = process.env.ADMIN_USERNAME ?? "admin";
 const ADMIN_PASS = process.env.ADMIN_PASSWORD ?? "caravan2026";
 
-export function verifyAdminCredentials(
+/**
+ * Staff sign in with their own credentials. The environment account is kept as
+ * an owner fallback so nobody can be locked out of the workshop admin — for
+ * example if the only admin's password is lost.
+ */
+export async function authenticate(
   username: string,
   password: string
-): boolean {
-  return username === ADMIN_USER && password === ADMIN_PASS;
+): Promise<Omit<AdminSession, "role"> | null> {
+  const found = await findStaffByUsername(username);
+  if (found) {
+    if (!found.staff.active) return null;
+    const ok = await verifyPassword(password, found.passwordHash);
+    if (!ok) return null;
+    return {
+      name: found.staff.name,
+      staffId: found.staff.id,
+      accessLevel: found.staff.accessLevel,
+    };
+  }
+
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    return { name: username, staffId: "", accessLevel: "admin" };
+  }
+  return null;
 }
 
-export async function createAdminSession(name: string): Promise<void> {
-  const token = await sign({ role: "admin", name });
+export async function createAdminSession(
+  session: Omit<AdminSession, "role">
+): Promise<void> {
+  const token = await sign({ role: "admin", ...session });
   (await cookies()).set(ADMIN_COOKIE, token, await baseCookieOptions());
 }
 
@@ -76,7 +119,12 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   try {
     const { payload } = await jwtVerify(token, secret);
     if (payload.role !== "admin") return null;
-    return { role: "admin", name: String(payload.name ?? "Staff") };
+    return {
+      role: "admin",
+      name: String(payload.name ?? "Staff"),
+      staffId: String(payload.staffId ?? ""),
+      accessLevel: payload.accessLevel === "admin" ? "admin" : "staff",
+    };
   } catch {
     return null;
   }

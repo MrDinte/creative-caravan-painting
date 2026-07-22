@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireFullAccess } from "@/lib/guard";
 import Link from "next/link";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { listQuotes } from "@/lib/db";
@@ -23,6 +24,7 @@ const TONE: Record<QuoteStatus, "slate" | "brand" | "green" | "red"> = {
 };
 
 export default async function QuotesPage() {
+  await requireFullAccess();
   const quotes = await listQuotes();
 
   return (

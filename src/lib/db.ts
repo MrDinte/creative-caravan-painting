@@ -8,16 +8,20 @@ import {
   demoProducts,
   demoQuotes,
   demoStaff,
+  demoStaffPasswords,
   demoTasks,
+  demoTimesheets,
   demoUpdates,
 } from "./demo-data";
 import type {
+  AccessLevel,
   ContactSubmission,
   GalleryItem,
   Job,
   JobLocation,
   JobStatus,
   Staff,
+  TimesheetEntry,
   JobUpdate,
   OrderEnquiry,
   PriceBookItem,
@@ -28,6 +32,7 @@ import type {
   Task,
   TaskStatus,
 } from "./types";
+import { PAYROLL_DEFAULTS } from "./types";
 
 // Data layer with two backends:
 //  - Demo mode (default): seeded in-memory store so the deployed demo works with zero setup.
@@ -48,6 +53,8 @@ interface MemoryStore {
   priceBook: PriceBookItem[];
   quotes: Quote[];
   staff: Staff[];
+  timesheets: TimesheetEntry[];
+  staffPasswords: Record<string, string>;
 }
 
 const globalStore = globalThis as unknown as { __ccpStore?: MemoryStore };
@@ -65,6 +72,8 @@ function mem(): MemoryStore {
       priceBook: structuredClone(demoPriceBook),
       quotes: structuredClone(demoQuotes),
       staff: structuredClone(demoStaff),
+      timesheets: structuredClone(demoTimesheets),
+      staffPasswords: { ...demoStaffPasswords },
     };
   }
   return globalStore.__ccpStore;
@@ -127,6 +136,30 @@ const staffFromRow = (r: any): Staff => ({
   name: r.name,
   role: r.role ?? "",
   active: r.active ?? true,
+  username: r.username ?? "",
+  accessLevel: (r.access_level ?? "staff") as AccessLevel,
+  hasLogin: Boolean(r.password_hash),
+  hourlyRateCents: Number(r.hourly_rate_cents ?? 0),
+  overtimeMultiplier: Number(
+    r.overtime_multiplier ?? PAYROLL_DEFAULTS.overtimeMultiplier
+  ),
+  overtimeAfterHours: Number(
+    r.overtime_after_hours ?? PAYROLL_DEFAULTS.overtimeAfterHours
+  ),
+  defaultBreakMinutes: Number(
+    r.default_break_minutes ?? PAYROLL_DEFAULTS.breakMinutes
+  ),
+  createdAt: toIsoStr(r.created_at),
+});
+
+const timesheetFromRow = (r: any): TimesheetEntry => ({
+  id: r.id,
+  staffId: r.staff_id,
+  jobId: r.job_id ?? "",
+  workDate: toDateStr(r.work_date),
+  hours: Number(r.hours),
+  breakMinutes: Number(r.break_minutes ?? PAYROLL_DEFAULTS.breakMinutes),
+  notes: r.notes ?? "",
   createdAt: toIsoStr(r.created_at),
 });
 
@@ -316,6 +349,14 @@ export async function listStaff(activeOnly = false): Promise<Staff[]> {
   return activeOnly ? all.filter((s) => s.active) : all;
 }
 
+export async function getStaff(id: string): Promise<Staff | null> {
+  if (hasDatabase()) {
+    const rows = await sql()`select * from staff where id = ${id}`;
+    return rows[0] ? staffFromRow(rows[0]) : null;
+  }
+  return mem().staff.find((s) => s.id === id) ?? null;
+}
+
 export async function createStaff(
   name: string,
   role: string
@@ -325,12 +366,19 @@ export async function createStaff(
     name,
     role,
     active: true,
+    username: "",
+    accessLevel: "staff",
+    hasLogin: false,
+    hourlyRateCents: 0,
+    overtimeMultiplier: PAYROLL_DEFAULTS.overtimeMultiplier,
+    overtimeAfterHours: PAYROLL_DEFAULTS.overtimeAfterHours,
+    defaultBreakMinutes: PAYROLL_DEFAULTS.breakMinutes,
     createdAt: new Date().toISOString(),
   };
   if (hasDatabase()) {
     await sql()`
-      insert into staff (id, name, role, active, created_at)
-      values (${member.id}, ${member.name}, ${member.role}, true, ${member.createdAt})`;
+      insert into staff (id, name, role, active, access_level, created_at)
+      values (${member.id}, ${member.name}, ${member.role}, true, 'staff', ${member.createdAt})`;
     return member;
   }
   mem().staff.push(member);
@@ -346,13 +394,201 @@ export async function updateStaff(
       update staff set name = ${changes.name}, role = ${changes.role},
                        active = ${changes.active}
        where id = ${id}`;
-    const rows = await sql()`select * from staff where id = ${id}`;
-    return rows[0] ? staffFromRow(rows[0]) : null;
+    return getStaff(id);
   }
   const member = mem().staff.find((s) => s.id === id);
   if (!member) return null;
   Object.assign(member, changes);
   return member;
+}
+
+// ---------- Staff logins ----------
+
+export async function findStaffByUsername(
+  username: string
+): Promise<{ staff: Staff; passwordHash: string } | null> {
+  const uname = username.trim().toLowerCase();
+  if (!uname) return null;
+
+  if (hasDatabase()) {
+    const rows =
+      await sql()`select * from staff where lower(username) = ${uname}`;
+    const row = rows[0];
+    if (!row?.password_hash) return null;
+    return { staff: staffFromRow(row), passwordHash: row.password_hash };
+  }
+  const store = mem();
+  const member = store.staff.find(
+    (s) => s.username.toLowerCase() === uname
+  );
+  const hash = member ? store.staffPasswords[member.id] : undefined;
+  if (!member || !hash) return null;
+  return { staff: member, passwordHash: hash };
+}
+
+export async function isUsernameTaken(
+  username: string,
+  exceptStaffId?: string
+): Promise<boolean> {
+  const uname = username.trim().toLowerCase();
+  if (!uname) return false;
+
+  if (hasDatabase()) {
+    const rows = exceptStaffId
+      ? await sql()`select id from staff where lower(username) = ${uname} and id <> ${exceptStaffId}`
+      : await sql()`select id from staff where lower(username) = ${uname}`;
+    return rows.length > 0;
+  }
+  return mem().staff.some(
+    (s) => s.username.toLowerCase() === uname && s.id !== exceptStaffId
+  );
+}
+
+export async function setStaffLogin(
+  id: string,
+  username: string,
+  passwordHash: string | null,
+  accessLevel: AccessLevel
+): Promise<Staff | null> {
+  if (hasDatabase()) {
+    if (passwordHash) {
+      await sql()`
+        update staff set username = ${username}, password_hash = ${passwordHash},
+                         access_level = ${accessLevel}
+         where id = ${id}`;
+    } else {
+      await sql()`
+        update staff set username = ${username}, access_level = ${accessLevel}
+         where id = ${id}`;
+    }
+    return getStaff(id);
+  }
+  const store = mem();
+  const member = store.staff.find((s) => s.id === id);
+  if (!member) return null;
+  member.username = username;
+  member.accessLevel = accessLevel;
+  if (passwordHash) {
+    store.staffPasswords[id] = passwordHash;
+    member.hasLogin = true;
+  }
+  return member;
+}
+
+export async function setStaffPayroll(
+  id: string,
+  pay: {
+    hourlyRateCents: number;
+    overtimeMultiplier: number;
+    overtimeAfterHours: number;
+    defaultBreakMinutes: number;
+  }
+): Promise<Staff | null> {
+  if (hasDatabase()) {
+    await sql()`
+      update staff
+         set hourly_rate_cents = ${pay.hourlyRateCents},
+             overtime_multiplier = ${pay.overtimeMultiplier},
+             overtime_after_hours = ${pay.overtimeAfterHours},
+             default_break_minutes = ${pay.defaultBreakMinutes}
+       where id = ${id}`;
+    return getStaff(id);
+  }
+  const member = mem().staff.find((s) => s.id === id);
+  if (!member) return null;
+  Object.assign(member, pay);
+  return member;
+}
+
+export async function removeStaffLogin(id: string): Promise<void> {
+  if (hasDatabase()) {
+    await sql()`update staff set username = null, password_hash = null where id = ${id}`;
+    return;
+  }
+  const store = mem();
+  const member = store.staff.find((s) => s.id === id);
+  if (member) {
+    member.username = "";
+    member.hasLogin = false;
+    delete store.staffPasswords[id];
+  }
+}
+
+// ---------- Timesheets ----------
+
+export async function listTimesheets(filter?: {
+  staffId?: string;
+  from?: string;
+  to?: string;
+}): Promise<TimesheetEntry[]> {
+  if (hasDatabase()) {
+    const rows = filter?.staffId
+      ? await sql()`
+          select * from timesheet_entries
+           where staff_id = ${filter.staffId}
+           order by work_date desc, created_at desc`
+      : await sql()`
+          select * from timesheet_entries
+           order by work_date desc, created_at desc`;
+    const all = rows.map(timesheetFromRow);
+    return applyDateRange(all, filter);
+  }
+  const all = [...mem().timesheets]
+    .filter((t) => !filter?.staffId || t.staffId === filter.staffId)
+    .sort(
+      (a, b) =>
+        b.workDate.localeCompare(a.workDate) ||
+        b.createdAt.localeCompare(a.createdAt)
+    );
+  return applyDateRange(all, filter);
+}
+
+function applyDateRange(
+  entries: TimesheetEntry[],
+  filter?: { from?: string; to?: string }
+): TimesheetEntry[] {
+  return entries.filter(
+    (t) =>
+      (!filter?.from || t.workDate >= filter.from) &&
+      (!filter?.to || t.workDate <= filter.to)
+  );
+}
+
+export async function createTimesheetEntry(
+  input: Omit<TimesheetEntry, "id" | "createdAt">
+): Promise<TimesheetEntry> {
+  const entry: TimesheetEntry = {
+    ...input,
+    id: makeId(),
+    createdAt: new Date().toISOString(),
+  };
+  if (hasDatabase()) {
+    await sql()`
+      insert into timesheet_entries (id, staff_id, job_id, work_date, hours, notes, created_at)
+      values (${entry.id}, ${entry.staffId}, ${entry.jobId || null},
+              ${entry.workDate}, ${entry.hours}, ${entry.notes}, ${entry.createdAt})`;
+    return entry;
+  }
+  mem().timesheets.push(entry);
+  return entry;
+}
+
+export async function deleteTimesheetEntry(
+  id: string,
+  onlyStaffId?: string
+): Promise<boolean> {
+  if (hasDatabase()) {
+    const rows = onlyStaffId
+      ? await sql()`delete from timesheet_entries where id = ${id} and staff_id = ${onlyStaffId} returning id`
+      : await sql()`delete from timesheet_entries where id = ${id} returning id`;
+    return rows.length > 0;
+  }
+  const store = mem();
+  const before = store.timesheets.length;
+  store.timesheets = store.timesheets.filter(
+    (t) => t.id !== id || (onlyStaffId ? t.staffId !== onlyStaffId : false)
+  );
+  return store.timesheets.length < before;
 }
 
 /**

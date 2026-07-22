@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireFullAccess } from "@/lib/guard";
 import { Card } from "@/components/ui";
 import { PriceBookManager } from "@/components/PriceBookManager";
 import { listPriceBook } from "@/lib/db";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function PricesPage() {
+  await requireFullAccess();
   const items = await listPriceBook();
 
   return (

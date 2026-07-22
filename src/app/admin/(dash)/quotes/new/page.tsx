@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireFullAccess } from "@/lib/guard";
 import Link from "next/link";
 import { QuoteBuilder } from "@/components/QuoteBuilder";
 import { listPriceBook, nextQuoteNumber } from "@/lib/db";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewQuotePage() {
+  await requireFullAccess();
   const [priceBook, quoteNumber] = await Promise.all([
     listPriceBook(),
     nextQuoteNumber(),

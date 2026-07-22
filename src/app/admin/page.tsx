@@ -39,18 +39,27 @@ export default async function AdminLoginPage() {
             Staff Login
           </h1>
           <p className="mt-2 text-sm text-slate-600">
-            Workshop management — jobs, calendar, quotes and customer updates.
+            Workshop management — jobs, calendar, timesheets and customer
+            updates. Sign in with your own username.
           </p>
           <div className="mt-6">
             <AdminLoginForm />
           </div>
 
           {showDemo && (
-            <p className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              <strong>Demo login:</strong> username{" "}
-              <code className="font-mono font-semibold">admin</code>, password{" "}
-              <code className="font-mono font-semibold">caravan2026</code>
-            </p>
+            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <p>
+                <strong>Owner login:</strong>{" "}
+                <code className="font-mono font-semibold">admin</code> /{" "}
+                <code className="font-mono font-semibold">caravan2026</code>
+              </p>
+              <p className="mt-1">
+                <strong>Staff login:</strong>{" "}
+                <code className="font-mono font-semibold">jake</code> /{" "}
+                <code className="font-mono font-semibold">workshop2026</code>{" "}
+                — limited access, own timesheet only
+              </p>
+            </div>
           )}
         </Card>
 

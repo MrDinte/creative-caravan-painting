@@ -32,6 +32,9 @@ export default async function AdminDashLayout({
           <div className="flex items-center gap-3">
             <span className="text-xs sm:text-sm text-slate-600">
               Signed in as <strong>{session.name}</strong>
+              {session.accessLevel === "staff" && (
+                <span className="ml-1 text-slate-400">(staff)</span>
+              )}
             </span>
             <Link
               href="/"
@@ -63,7 +66,7 @@ export default async function AdminDashLayout({
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6 lg:flex-row">
         <aside className="lg:w-56 lg:shrink-0">
-          <AdminNav />
+          <AdminNav accessLevel={session.accessLevel} />
         </aside>
         <main className="min-w-0 flex-1">{children}</main>
       </div>

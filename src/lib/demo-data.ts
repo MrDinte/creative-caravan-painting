@@ -1,4 +1,5 @@
 import type {
+  TimesheetEntry,
   ContactSubmission,
   GalleryItem,
   Job,
@@ -13,9 +14,43 @@ import type {
 
 // Seeded staff. Names match the assignees on the seeded tasks.
 export const demoStaff: Staff[] = [
-  { id: "s1", name: "Tim", role: "Owner / Spray Painter", active: true, createdAt: "2026-01-05T00:00:00.000Z" },
-  { id: "s2", name: "Jake", role: "Panel & Prep", active: true, createdAt: "2026-01-05T00:00:00.000Z" },
-  { id: "s3", name: "Mel", role: "Interiors & Upholstery", active: true, createdAt: "2026-03-02T00:00:00.000Z" },
+  {
+    id: "s1", name: "Tim", role: "Owner / Spray Painter", active: true,
+    username: "tim", accessLevel: "admin", hasLogin: true,
+    hourlyRateCents: 6500, overtimeMultiplier: 2.5, overtimeAfterHours: 38,
+    defaultBreakMinutes: 30, createdAt: "2026-01-05T00:00:00.000Z",
+  },
+  {
+    id: "s2", name: "Jake", role: "Panel & Prep", active: true,
+    username: "jake", accessLevel: "staff", hasLogin: true,
+    hourlyRateCents: 4200, overtimeMultiplier: 2.5, overtimeAfterHours: 38,
+    defaultBreakMinutes: 30, createdAt: "2026-01-05T00:00:00.000Z",
+  },
+  {
+    id: "s3", name: "Mel", role: "Interiors & Upholstery", active: true,
+    username: "mel", accessLevel: "staff", hasLogin: true,
+    hourlyRateCents: 4000, overtimeMultiplier: 2.5, overtimeAfterHours: 38,
+    defaultBreakMinutes: 30, createdAt: "2026-03-02T00:00:00.000Z",
+  },
+];
+
+// scrypt hashes of "workshop2026" for the demo logins.
+export const demoStaffPasswords: Record<string, string> = {
+  s1: "e0f59d1dac1081e8a245ced83629a10b:3f513ce4c31bce700e441a0c2b159acf8a3841326ea139f697c4f6b40334a7fab89946438da740a5f01f27d077671d77dcab1bb07f35e62f46061c3453bef9bc",
+  s2: "26c83fea3768d64d098d4d0bea4c76f9:9c99b448f9b1e735bde315fdac50910ae9718a50b09d09ab3802f2e795324ede973f704a5bd872f08869a400f64656c2dec8cb10e456b04de8bd97a2a9c33165",
+  s3: "1a80bd0b0fb4bded733126a3ee134ed0:37c2a19a5ec4db54401a9a39aa0daf8cac8d2c47aa117519be8f86a229b99338105604f7a81ab33c327c524fb38045afbb9e60ee0230cf4b72dd8890a5ae10fd",
+};
+
+// A fortnight of hours, including a week that tips Jake into overtime.
+export const demoTimesheets: TimesheetEntry[] = [
+  { id: "ts1", staffId: "s2", jobId: "j1", workDate: "2026-07-13", hours: 8.5, breakMinutes: 30, notes: "Sanding and prep", createdAt: "2026-07-13T17:00:00.000Z" },
+  { id: "ts2", staffId: "s2", jobId: "j1", workDate: "2026-07-14", hours: 8.5, breakMinutes: 30, notes: "Masking", createdAt: "2026-07-14T17:00:00.000Z" },
+  { id: "ts3", staffId: "s2", jobId: "j1", workDate: "2026-07-15", hours: 9, breakMinutes: 30, notes: "Prep finish", createdAt: "2026-07-15T17:00:00.000Z" },
+  { id: "ts4", staffId: "s2", jobId: "j4", workDate: "2026-07-16", hours: 9, breakMinutes: 30, notes: "Vinyl flooring", createdAt: "2026-07-16T17:00:00.000Z" },
+  { id: "ts5", staffId: "s2", jobId: "j4", workDate: "2026-07-17", hours: 9.5, breakMinutes: 30, notes: "Gas lift bed", createdAt: "2026-07-17T17:00:00.000Z" },
+  { id: "ts6", staffId: "s1", jobId: "j1", workDate: "2026-07-16", hours: 7.5, breakMinutes: 30, notes: "Base coat", createdAt: "2026-07-16T17:00:00.000Z" },
+  { id: "ts7", staffId: "s1", jobId: "j2", workDate: "2026-07-17", hours: 6, breakMinutes: 30, notes: "Frame polishing", createdAt: "2026-07-17T17:00:00.000Z" },
+  { id: "ts8", staffId: "s3", jobId: "j4", workDate: "2026-07-16", hours: 8, breakMinutes: 30, notes: "Cushion reupholstery", createdAt: "2026-07-16T17:00:00.000Z" },
 ];
 
 // Demo dataset used when no DATABASE_URL is configured, so the site works

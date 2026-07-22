@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireFullAccess } from "@/lib/guard";
 import { Card } from "@/components/ui";
 import { StaffManager } from "@/components/StaffManager";
 import { listStaff } from "@/lib/db";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function StaffPage() {
+  await requireFullAccess();
   const staff = await listStaff();
 
   return (

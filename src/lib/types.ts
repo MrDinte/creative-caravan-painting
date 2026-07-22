@@ -17,12 +17,105 @@ export const JOB_LOCATION_LABELS: Record<JobLocation, string> = {
 
 export const JOB_LOCATIONS = Object.keys(JOB_LOCATION_LABELS) as JobLocation[];
 
+/** "admin" sees everything; "staff" is limited to work and their own hours. */
+export type AccessLevel = "admin" | "staff";
+
+export const ACCESS_LEVEL_LABELS: Record<AccessLevel, string> = {
+  admin: "Full access (owner/manager)",
+  staff: "Staff — jobs, tasks and own timesheet",
+};
+
 export interface Staff {
   id: string;
   name: string;
   role: string;
   active: boolean;
+  username: string; // "" when they have no login yet
+  accessLevel: AccessLevel;
+  hasLogin: boolean;
+  // Payroll
+  hourlyRateCents: number;
+  overtimeMultiplier: number; // e.g. 2.5 = time and a half plus
+  overtimeAfterHours: number; // weekly threshold before overtime applies
+  defaultBreakMinutes: number; // unpaid, prefilled on new entries
   createdAt: string;
+}
+
+export interface TimesheetEntry {
+  id: string;
+  staffId: string;
+  jobId: string; // "" when not against a specific job
+  workDate: string; // ISO date
+  hours: number; // hours on site, before the break is taken off
+  breakMinutes: number; // unpaid
+  notes: string;
+  createdAt: string;
+}
+
+export const PAYROLL_DEFAULTS = {
+  breakMinutes: 30,
+  overtimeMultiplier: 1.5,
+  overtimeAfterHours: 38,
+} as const;
+
+/** Hours actually paid for one entry — on-site time less the unpaid break. */
+export function paidHours(entry: Pick<TimesheetEntry, "hours" | "breakMinutes">): number {
+  return Math.max(0, entry.hours - entry.breakMinutes / 60);
+}
+
+export interface WeekPay {
+  weekStart: string;
+  paidHours: number;
+  ordinaryHours: number;
+  overtimeHours: number;
+  ordinaryPayCents: number;
+  overtimePayCents: number;
+  totalPayCents: number;
+}
+
+/**
+ * Splits a week's paid hours into ordinary and overtime, then values them.
+ * Overtime applies past the staff member's weekly threshold.
+ */
+export function calculateWeekPay(
+  weekStartDate: string,
+  entries: TimesheetEntry[],
+  staff: Pick<
+    Staff,
+    "hourlyRateCents" | "overtimeMultiplier" | "overtimeAfterHours"
+  >
+): WeekPay {
+  const total = entries.reduce((sum, e) => sum + paidHours(e), 0);
+  const threshold = staff.overtimeAfterHours;
+  const ordinaryHours = Math.min(total, threshold);
+  const overtimeHours = Math.max(0, total - threshold);
+
+  const ordinaryPayCents = Math.round(ordinaryHours * staff.hourlyRateCents);
+  const overtimePayCents = Math.round(
+    overtimeHours * staff.hourlyRateCents * staff.overtimeMultiplier
+  );
+
+  return {
+    weekStart: weekStartDate,
+    paidHours: total,
+    ordinaryHours,
+    overtimeHours,
+    ordinaryPayCents,
+    overtimePayCents,
+    totalPayCents: ordinaryPayCents + overtimePayCents,
+  };
+}
+
+/** Monday-start week key, used to group hours for payroll. */
+export function weekStart(isoDate: string): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day);
+  return d.toISOString().slice(0, 10);
+}
+
+export function formatHours(hours: number): string {
+  return `${hours.toFixed(2).replace(/\.00$/, "")} h`;
 }
 
 export interface Job {

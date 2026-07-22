@@ -5,10 +5,13 @@ import { Badge, Button, Field, inputClass } from "./ui";
 import {
   createStaffAction,
   deactivateStaffAction,
+  setStaffLoginAction,
+  setStaffPayrollAction,
   updateStaffAction,
   type FormState,
 } from "@/app/actions";
-import type { Staff } from "@/lib/types";
+import { ACCESS_LEVEL_LABELS, formatAud } from "@/lib/types";
+import type { AccessLevel, Staff } from "@/lib/types";
 
 const initialState: FormState = { ok: false, message: "" };
 
@@ -21,6 +24,14 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
   );
   const [editState, editAction, saving] = useActionState(
     updateStaffAction,
+    initialState
+  );
+  const [loginState, loginAction, savingLogin] = useActionState(
+    setStaffLoginAction,
+    initialState
+  );
+  const [payState, payAction, savingPay] = useActionState(
+    setStaffPayrollAction,
     initialState
   );
 
@@ -40,6 +51,18 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
   if (addState !== lastAdd) {
     setLastAdd(addState);
     if (addState.message) setNotice(addState);
+  }
+
+  const [lastLogin, setLastLogin] = useState(loginState);
+  if (loginState !== lastLogin) {
+    setLastLogin(loginState);
+    if (loginState.message) setNotice(loginState);
+  }
+
+  const [lastPay, setLastPay] = useState(payState);
+  if (payState !== lastPay) {
+    setLastPay(payState);
+    if (payState.message) setNotice(payState);
   }
 
   const active = staff.filter((s) => s.active);
@@ -67,9 +90,25 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
               <div className="min-w-0">
                 <p className="font-semibold text-slate-900">
                   {s.name}{" "}
-                  {!s.active && <Badge tone="slate">Inactive</Badge>}
+                  {!s.active && <Badge tone="slate">Inactive</Badge>}{" "}
+                  {s.accessLevel === "admin" && s.hasLogin && (
+                    <Badge tone="brand">Full access</Badge>
+                  )}
                 </p>
                 <p className="text-sm text-slate-500">{s.role || "—"}</p>
+                <p className="mt-0.5 text-xs text-slate-500">
+                  {s.hasLogin ? (
+                    <>
+                      Login <code className="font-mono">{s.username}</code>
+                    </>
+                  ) : (
+                    <span className="text-amber-700">No login yet</span>
+                  )}
+                  {" · "}
+                  {s.hourlyRateCents > 0
+                    ? `${formatAud(s.hourlyRateCents)}/h, OT ×${s.overtimeMultiplier} after ${s.overtimeAfterHours} h`
+                    : "No pay rate set"}
+                </p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -177,7 +216,143 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
                 </Button>
               </div>
             </form>
-          ) : (
+          ) : null}
+
+          {editing && (
+            <>
+              <hr className="my-5 border-slate-200" />
+              <h3 className="font-display text-base font-bold text-slate-900">
+                Login
+              </h3>
+              <form
+                action={loginAction}
+                className="mt-3 space-y-3"
+                key={`login-${editing.id}`}
+                data-testid="staff-login-form"
+              >
+                <input type="hidden" name="id" value={editing.id} />
+                <Field label="Username" required>
+                  <input
+                    name="username"
+                    required
+                    defaultValue={editing.username}
+                    className={`${inputClass} font-mono`}
+                    placeholder="jake"
+                    autoComplete="off"
+                  />
+                </Field>
+                <Field
+                  label="Password"
+                  hint={
+                    editing.hasLogin
+                      ? "Leave blank to keep the current password"
+                      : "At least 8 characters"
+                  }
+                  required={!editing.hasLogin}
+                >
+                  <input
+                    name="password"
+                    type="password"
+                    className={inputClass}
+                    placeholder="••••••••"
+                    autoComplete="new-password"
+                  />
+                </Field>
+                <Field label="Access level">
+                  <select
+                    name="accessLevel"
+                    className={inputClass}
+                    defaultValue={editing.accessLevel}
+                  >
+                    {(Object.keys(ACCESS_LEVEL_LABELS) as AccessLevel[]).map(
+                      (lvl) => (
+                        <option key={lvl} value={lvl}>
+                          {ACCESS_LEVEL_LABELS[lvl]}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </Field>
+                <Button
+                  type="submit"
+                  disabled={savingLogin}
+                  className="w-full !min-h-[44px] !py-2"
+                  data-testid="save-login-submit"
+                >
+                  {savingLogin ? "Saving…" : "Save login"}
+                </Button>
+              </form>
+
+              <hr className="my-5 border-slate-200" />
+              <h3 className="font-display text-base font-bold text-slate-900">
+                Pay
+              </h3>
+              <form
+                action={payAction}
+                className="mt-3 space-y-3"
+                key={`pay-${editing.id}`}
+                data-testid="staff-pay-form"
+              >
+                <input type="hidden" name="id" value={editing.id} />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Hourly rate" required>
+                    <input
+                      name="hourlyRate"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required
+                      defaultValue={(editing.hourlyRateCents / 100).toFixed(2)}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Overtime ×" required hint="e.g. 2.5">
+                    <input
+                      name="overtimeMultiplier"
+                      type="number"
+                      step="0.1"
+                      min="1"
+                      required
+                      defaultValue={editing.overtimeMultiplier}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="OT after (h/week)" required>
+                    <input
+                      name="overtimeAfterHours"
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      required
+                      defaultValue={editing.overtimeAfterHours}
+                      className={inputClass}
+                    />
+                  </Field>
+                  <Field label="Unpaid break (min)" required>
+                    <input
+                      name="defaultBreakMinutes"
+                      type="number"
+                      step="5"
+                      min="0"
+                      required
+                      defaultValue={editing.defaultBreakMinutes}
+                      className={inputClass}
+                    />
+                  </Field>
+                </div>
+                <Button
+                  type="submit"
+                  disabled={savingPay}
+                  className="w-full !min-h-[44px] !py-2"
+                  data-testid="save-pay-submit"
+                >
+                  {savingPay ? "Saving…" : "Save pay settings"}
+                </Button>
+              </form>
+            </>
+          )}
+
+          {!editing && (
             <form
               action={addAction}
               className="mt-4 space-y-4"

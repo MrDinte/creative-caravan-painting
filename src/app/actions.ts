@@ -10,12 +10,19 @@ import {
   createQuote,
   createStaff,
   createTask,
+  createTimesheetEntry,
   deactivateStaff,
+  deleteTimesheetEntry,
   deletePriceBookItem,
   findJobByCredentials,
   findPriceBookItemByCode,
   getQuote,
+  getStaff,
+  isUsernameTaken,
   nextJobCode,
+  removeStaffLogin,
+  setStaffLogin,
+  setStaffPayroll,
   updateJob,
   updateJobStatus,
   updateQuoteStatus,
@@ -29,9 +36,11 @@ import {
   createAdminSession,
   createCustomerSession,
   getAdminSession,
-  verifyAdminCredentials,
+  authenticate,
 } from "@/lib/auth";
+import { hashPassword, passwordProblem } from "@/lib/password";
 import type {
+  AccessLevel,
   JobLocation,
   JobStatus,
   QuoteStatus,
@@ -166,10 +175,11 @@ export async function adminLogin(
   const username = String(formData.get("username") ?? "").trim();
   const password = String(formData.get("password") ?? "");
 
-  if (!verifyAdminCredentials(username, password)) {
+  const session = await authenticate(username, password);
+  if (!session) {
     return { ok: false, message: "Incorrect username or password." };
   }
-  await createAdminSession(username);
+  await createAdminSession(session);
   redirect("/admin/dashboard");
 }
 
@@ -310,6 +320,162 @@ export async function updateStaffAction(
   revalidatePath("/admin/staff");
   revalidatePath("/admin/jobs");
   return { ok: true, message: `Saved ${name}.` };
+}
+
+async function requireFullAdmin() {
+  const session = await requireAdmin();
+  if (session.accessLevel !== "admin") throw new Error("Forbidden");
+  return session;
+}
+
+export async function setStaffLoginAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireFullAdmin();
+
+  const id = String(formData.get("id"));
+  const username = String(formData.get("username") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const accessLevel: AccessLevel =
+    formData.get("accessLevel") === "admin" ? "admin" : "staff";
+
+  if (!username) return { ok: false, message: "Enter a username." };
+  if (!/^[a-z0-9._-]{3,32}$/.test(username)) {
+    return {
+      ok: false,
+      message: "Username must be 3–32 characters: letters, numbers, dot, dash or underscore.",
+    };
+  }
+  if (await isUsernameTaken(username, id)) {
+    return { ok: false, message: `Username "${username}" is already taken.` };
+  }
+
+  const member = await getStaff(id);
+  if (!member) return { ok: false, message: "That person no longer exists." };
+
+  // A blank password on an existing login means "leave it unchanged".
+  let hash: string | null = null;
+  if (password) {
+    const problem = passwordProblem(password);
+    if (problem) return { ok: false, message: problem };
+    hash = await hashPassword(password);
+  } else if (!member.hasLogin) {
+    return { ok: false, message: "Set a password for their first login." };
+  }
+
+  await setStaffLogin(id, username, hash, accessLevel);
+  revalidatePath("/admin/staff");
+  return {
+    ok: true,
+    message: `Login saved for ${member.name} (${username}).`,
+  };
+}
+
+export async function removeStaffLoginAction(formData: FormData) {
+  await requireFullAdmin();
+  await removeStaffLogin(String(formData.get("id")));
+  revalidatePath("/admin/staff");
+}
+
+export async function setStaffPayrollAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireFullAdmin();
+
+  const id = String(formData.get("id"));
+  const rate = Number(formData.get("hourlyRate") ?? 0);
+  const multiplier = Number(formData.get("overtimeMultiplier") ?? 0);
+  const afterHours = Number(formData.get("overtimeAfterHours") ?? 0);
+  const breakMinutes = Number(formData.get("defaultBreakMinutes") ?? 0);
+
+  if (!Number.isFinite(rate) || rate < 0) {
+    return { ok: false, message: "Enter a valid hourly rate." };
+  }
+  if (!Number.isFinite(multiplier) || multiplier < 1) {
+    return { ok: false, message: "Overtime multiplier must be at least 1." };
+  }
+  if (!Number.isFinite(afterHours) || afterHours < 0 || afterHours > 168) {
+    return { ok: false, message: "Overtime threshold must be between 0 and 168 hours." };
+  }
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0 || breakMinutes >= 600) {
+    return { ok: false, message: "Break must be between 0 and 599 minutes." };
+  }
+
+  const updated = await setStaffPayroll(id, {
+    hourlyRateCents: Math.round(rate * 100),
+    overtimeMultiplier: multiplier,
+    overtimeAfterHours: afterHours,
+    defaultBreakMinutes: Math.round(breakMinutes),
+  });
+  if (!updated) return { ok: false, message: "That person no longer exists." };
+
+  revalidatePath("/admin/staff");
+  revalidatePath("/admin/timesheets");
+  return { ok: true, message: `Pay settings saved for ${updated.name}.` };
+}
+
+// ---------- Timesheets ----------
+
+export async function addTimesheetEntryAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireAdmin();
+
+  const requestedStaffId = String(formData.get("staffId") ?? "");
+  // Staff may only log their own hours; full admins can log for anyone.
+  const staffId =
+    session.accessLevel === "admin" ? requestedStaffId : session.staffId;
+
+  if (!staffId) {
+    return {
+      ok: false,
+      message:
+        session.accessLevel === "admin"
+          ? "Choose whose hours these are."
+          : "Your login isn't linked to a staff record, so hours can't be logged.",
+    };
+  }
+
+  const workDate = String(formData.get("workDate") ?? "");
+  const hours = Number(formData.get("hours") ?? 0);
+  const breakMinutes = Number(formData.get("breakMinutes") ?? 0);
+
+  if (!workDate) return { ok: false, message: "Pick the date worked." };
+  if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+    return { ok: false, message: "Hours must be between 0 and 24." };
+  }
+  if (!Number.isFinite(breakMinutes) || breakMinutes < 0 || breakMinutes >= 600) {
+    return { ok: false, message: "Break must be between 0 and 599 minutes." };
+  }
+  if (breakMinutes / 60 >= hours) {
+    return { ok: false, message: "The break can't be longer than the hours worked." };
+  }
+
+  await createTimesheetEntry({
+    staffId,
+    jobId: String(formData.get("jobId") ?? ""),
+    workDate,
+    hours,
+    breakMinutes: Math.round(breakMinutes),
+    notes: String(formData.get("notes") ?? "").trim(),
+  });
+
+  revalidatePath("/admin/timesheets");
+  return { ok: true, message: `Logged ${hours} h on ${workDate}.` };
+}
+
+export async function deleteTimesheetEntryAction(formData: FormData) {
+  const session = await requireAdmin();
+  const id = String(formData.get("id"));
+  // Staff can only remove their own rows.
+  await deleteTimesheetEntry(
+    id,
+    session.accessLevel === "admin" ? undefined : session.staffId
+  );
+  revalidatePath("/admin/timesheets");
 }
 
 export async function deactivateStaffAction(formData: FormData) {

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireFullAccess } from "@/lib/guard";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
@@ -31,6 +32,7 @@ export default async function QuoteDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireFullAccess();
   const { id } = await params;
   const quote = await getQuote(id);
   if (!quote) notFound();

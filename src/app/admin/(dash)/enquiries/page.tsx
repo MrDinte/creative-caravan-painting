@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { requireFullAccess } from "@/lib/guard";
 import { Badge, Card } from "@/components/ui";
 import { listContacts, listOrders } from "@/lib/db";
 import { formatAud } from "@/lib/types";
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function EnquiriesPage() {
+  await requireFullAccess();
   const [contacts, orders] = await Promise.all([listContacts(), listOrders()]);
 
   return (
