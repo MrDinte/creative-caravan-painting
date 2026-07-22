@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { collectConsoleErrors } from "./helpers";
 
 const PUBLIC_PAGES = [
   { path: "/", heading: /new lease on life/i },
@@ -13,10 +14,7 @@ test.describe("Public pages render", () => {
   for (const { path, heading } of PUBLIC_PAGES) {
     test(`${path} loads with its H1 and no console errors`, async ({ page }) => {
       const errors: string[] = [];
-      page.on("console", (m) => {
-        if (m.type() === "error") errors.push(m.text());
-      });
-      page.on("pageerror", (e) => errors.push(e.message));
+      collectConsoleErrors(page, errors);
 
       const response = await page.goto(path);
       expect(response?.status(), `${path} should return 200`).toBe(200);

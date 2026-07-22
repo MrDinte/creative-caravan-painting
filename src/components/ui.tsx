@@ -106,28 +106,74 @@ const SIZING = "min-h-[48px] px-6 text-base font-semibold rounded-full";
   translated to React Aria's `isDisabled` below.
 */
 type ButtonProps = Omit<
-  React.ComponentProps<typeof HeroButton>,
-  "variant" | "isDisabled"
+  React.ButtonHTMLAttributes<HTMLButtonElement>,
+  "onClick" | "color"
 > & {
   variant?: ButtonVariant;
-  disabled?: boolean;
+  /**
+   * Kept as `onClick` because every call site already says that. On the React
+   * Aria path it is forwarded to `onPress`, which is the event that library
+   * actually fires — a plain `onClick` was intermittently dropped on mobile
+   * Safari, which the suite caught as a job-edit form that sometimes refused
+   * to open.
+   *
+   * Takes no argument: no handler here uses the event, and PressEvent is not a
+   * MouseEvent, so promising one would be a lie.
+   */
+  onClick?: () => void;
 };
 
+/*
+  Submit and reset buttons render as native <button>; everything else uses
+  HeroUI's.
+
+  React Aria synthesises presses from pointer events rather than relying on the
+  browser's click, and on mobile Safari that intermittently failed to trigger
+  the form submission underneath — measured at roughly 1 run in 25 against the
+  task-advance form. A dropped click on a menu toggle is a visual annoyance; a
+  dropped submit silently loses the user's work.
+
+  This is the same line already drawn for inputs: presentation comes from
+  HeroUI, form mechanics stay native, because these forms post to Server
+  Actions. buttonVariants() supplies the identical classes, and HeroUI's CSS
+  styles hover and active through real pseudo-classes as well as its own data
+  attributes, so the two paths look and behave the same.
+*/
 export function Button({
   children,
   variant = "primary",
   className = "",
   disabled,
   type = "button",
+  onClick,
   ...props
 }: ButtonProps) {
+  const cls = `${buttonVariants({ variant: HERO_VARIANT[variant] })} ${SIZING} ${
+    VARIANT_EXTRA[variant]
+  } ${className}`;
+
+  if (type === "submit" || type === "reset") {
+    return (
+      <button
+        type={type}
+        disabled={disabled}
+        onClick={onClick}
+        className={cls}
+        {...props}
+      >
+        {children}
+      </button>
+    );
+  }
+
   return (
     <HeroButton
-      type={type}
+      type="button"
       variant={HERO_VARIANT[variant]}
       isDisabled={disabled}
+      onPress={onClick}
       className={`${SIZING} ${VARIANT_EXTRA[variant]} ${className}`}
-      {...props}
+      {...(props as React.ComponentProps<typeof HeroButton>)}
     >
       {children}
     </HeroButton>

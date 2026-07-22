@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { writesData } from "./helpers";
+import { collectConsoleErrors, writesData } from "./helpers";
 
 const ADMIN_PAGES = [
   { path: "/admin/dashboard", heading: /Dashboard/i },
@@ -52,19 +52,10 @@ test.describe("Admin pages", () => {
 
   for (const { path, heading } of ADMIN_PAGES) {
     test(`${path} loads without console errors`, async ({ page }) => {
+      // Filters browser/platform noise that isn't this app's fault — see
+      // collectConsoleErrors for exactly what and why.
       const errors: string[] = [];
-      // WebKit reports "access control checks" for Next.js RSC link prefetches
-      // (`?_rsc=`). It's a browser quirk, not an app fault — navigation to
-      // these routes is covered by the link tests below.
-      const isPrefetchNoise = (text: string) => text.includes("_rsc=");
-
-      page.on("pageerror", (e) => {
-        if (!isPrefetchNoise(e.message)) errors.push(e.message);
-      });
-      page.on("console", (m) => {
-        if (m.type() !== "error") return;
-        if (!isPrefetchNoise(m.text())) errors.push(m.text());
-      });
+      collectConsoleErrors(page, errors);
 
       await page.goto(path);
       await expect(page.locator("h1")).toContainText(heading);
@@ -205,14 +196,27 @@ test.describe("Job and task management", () => {
     );
   });
 
-  test("advances a task through its statuses", async ({ page }) => {
-    await page.goto("/admin/jobs");
-    await page.getByRole("link", { name: "CCP-2026-003" }).click();
+  // Advancing a task mutates shared server state, and both browser projects
+  // run this test at the same time against one server. Reading the current
+  // status first isn't enough — the other project can advance the same task
+  // between the read and the assertion. Each project therefore drives its own
+  // task, which no other test touches.
+  const TASK_FOR_PROJECT: Record<string, { job: string; workId: string }> = {
+    "desktop-chromium": { job: "CCP-2026-003", workId: "CCP-2026-003-W01" },
+    "mobile-safari": { job: "CCP-2026-002", workId: "CCP-2026-002-W02" },
+  };
 
-    // Other tests share the same server state, so assert the transition
-    // relative to whatever the current status is rather than a fixed start.
+  test("advances a task through its statuses", async ({ page }, testInfo) => {
+    const target = TASK_FOR_PROJECT[testInfo.project.name];
+    expect(target, `no task assigned to ${testInfo.project.name}`).toBeTruthy();
+
+    await page.goto("/admin/jobs");
+    await page.getByRole("link", { name: target.job }).click();
+
+    // Still read the starting status rather than hardcoding it: the suite can
+    // be run repeatedly against a server that keeps its state between runs.
     const CYCLE = ["To Do", "In Progress", "Done"] as const;
-    const advance = page.getByTestId("task-advance-CCP-2026-003-W01");
+    const advance = page.getByTestId(`task-advance-${target.workId}`);
 
     const label = (await advance.textContent()) ?? "";
     const current = CYCLE.find((s) => label.trim().startsWith(s));
@@ -224,7 +228,7 @@ test.describe("Job and task management", () => {
     await advance.click();
     const after = CYCLE[(CYCLE.indexOf(next) + 1) % CYCLE.length];
     await expect(
-      page.getByTestId("task-advance-CCP-2026-003-W01")
+      page.getByTestId(`task-advance-${target.workId}`)
     ).toContainText(`${next} → ${after}`);
   });
 
