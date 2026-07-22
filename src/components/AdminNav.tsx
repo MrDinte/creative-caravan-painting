@@ -12,6 +12,8 @@ const links = [
   { href: "/admin/timesheets", label: "Timesheets", icon: "⏱️", adminOnly: false },
   { href: "/admin/quotes", label: "Quotes", icon: "🧾", adminOnly: true },
   { href: "/admin/invoices", label: "Invoices", icon: "💳", adminOnly: true },
+  { href: "/admin/stock", label: "Stock", icon: "📦", adminOnly: false },
+  { href: "/admin/suppliers", label: "Suppliers", icon: "🚚", adminOnly: true },
   { href: "/admin/prices", label: "Price Book", icon: "💲", adminOnly: true },
   { href: "/admin/staff", label: "Staff", icon: "👷", adminOnly: true },
   { href: "/admin/enquiries", label: "Enquiries", icon: "📥", adminOnly: true },

@@ -10,6 +10,8 @@ import {
   createQuote,
   createStaff,
   createTask,
+  addSupplierLogEntry,
+  adjustStock,
   createInvoice,
   createTimesheetEntry,
   clearShift,
@@ -18,8 +20,10 @@ import {
   deletePriceBookItem,
   findJobByCredentials,
   findPriceBookItemByCode,
+  findStockByCode,
   getInvoice,
   getJob,
+  getStockItem,
   getOpenShift,
   getQuote,
   getStaff,
@@ -32,6 +36,8 @@ import {
   setStaffLogin,
   setStaffPayroll,
   startShift,
+  upsertStockItem,
+  upsertSupplier,
   updateJob,
   updateJobStatus,
   updateQuoteStatus,
@@ -54,11 +60,18 @@ import type {
   InvoiceStatus,
   JobLocation,
   PaymentMethod,
+  StockCategory,
   JobStatus,
   QuoteStatus,
   TaskStatus,
 } from "@/lib/types";
-import { JOB_LOCATIONS, formatAud, invoiceBalanceCents } from "@/lib/types";
+import {
+  JOB_LOCATIONS,
+  STOCK_CATEGORIES,
+  formatAud,
+  invoiceBalanceCents,
+} from "@/lib/types";
+import { isPlausibleBarcode } from "@/lib/barcode";
 
 function parseLocation(v: FormDataEntryValue | null): JobLocation {
   const s = String(v ?? "");
@@ -477,6 +490,177 @@ export async function addTimesheetEntryAction(
 
   revalidatePath("/admin/timesheets");
   return { ok: true, message: `Logged ${hours} h on ${workDate}.` };
+}
+
+// ---------- Stock and suppliers ----------
+
+function parseStockCategory(v: FormDataEntryValue | null): StockCategory {
+  const s = String(v ?? "");
+  return (STOCK_CATEGORIES as string[]).includes(s)
+    ? (s as StockCategory)
+    : "other";
+}
+
+export async function saveSupplierAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireFullAdmin();
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { ok: false, message: "Supplier name is required." };
+
+  const supplier = await upsertSupplier({
+    id: String(formData.get("id") ?? "") || undefined,
+    name,
+    contactName: String(formData.get("contactName") ?? "").trim(),
+    phone: String(formData.get("phone") ?? "").trim(),
+    email: String(formData.get("email") ?? "").trim(),
+    website: String(formData.get("website") ?? "").trim(),
+    address: String(formData.get("address") ?? "").trim(),
+    accountNumber: String(formData.get("accountNumber") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+  });
+
+  revalidatePath("/admin/suppliers");
+  revalidatePath(`/admin/suppliers/${supplier.id}`);
+  revalidatePath("/admin/stock");
+  return { ok: true, message: `Saved ${supplier.name}.` };
+}
+
+export async function addSupplierLogAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireFullAdmin();
+  const supplierId = String(formData.get("supplierId"));
+  const entry = String(formData.get("entry") ?? "").trim();
+
+  if (!entry) return { ok: false, message: "Write something to log first." };
+
+  await addSupplierLogEntry(supplierId, entry, session.name);
+  revalidatePath(`/admin/suppliers/${supplierId}`);
+  return { ok: true, message: "Logged." };
+}
+
+export async function saveStockItemAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireFullAdmin();
+
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) return { ok: false, message: "Item name is required." };
+
+  const barcode = String(formData.get("barcode") ?? "").trim();
+  if (barcode && !isPlausibleBarcode(barcode)) {
+    return {
+      ok: false,
+      message: "That barcode doesn't look right — 4 to 48 characters, no spaces.",
+    };
+  }
+
+  // A barcode must point at one item, or scanning it is ambiguous.
+  if (barcode) {
+    const clash = await findStockByCode(barcode);
+    const id = String(formData.get("id") ?? "");
+    if (clash && clash.id !== id) {
+      return {
+        ok: false,
+        message: `Barcode ${barcode} is already on "${clash.name}".`,
+      };
+    }
+  }
+
+  const cost = Number(formData.get("cost") ?? 0);
+  const sale = Number(formData.get("sale") ?? 0);
+  if (!Number.isFinite(cost) || cost < 0 || !Number.isFinite(sale) || sale < 0) {
+    return { ok: false, message: "Enter valid cost and sale prices." };
+  }
+
+  const item = await upsertStockItem({
+    id: String(formData.get("id") ?? "") || undefined,
+    ccpCode: String(formData.get("ccpCode") ?? "") || undefined,
+    barcode,
+    name,
+    category: parseStockCategory(formData.get("category")),
+    unit: String(formData.get("unit") ?? "").trim() || "each",
+    qtyOnHand: Number(formData.get("qtyOnHand") ?? 0),
+    reorderLevel: Number(formData.get("reorderLevel") ?? 0),
+    costCents: Math.round(cost * 100),
+    saleCents: Math.round(sale * 100),
+    supplierId: String(formData.get("supplierId") ?? ""),
+    location: String(formData.get("location") ?? "").trim(),
+    notes: String(formData.get("notes") ?? "").trim(),
+  });
+
+  revalidatePath("/admin/stock");
+  revalidatePath(`/admin/stock/${item.id}`);
+  return {
+    ok: true,
+    message: `Saved ${item.name} — code ${item.ccpCode}.`,
+  };
+}
+
+export async function adjustStockAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  // Staff book stock in and out; only owners change prices.
+  const session = await requireAdmin();
+
+  const itemId = String(formData.get("itemId"));
+  const qty = Number(formData.get("qty") ?? 0);
+  const direction = String(formData.get("direction") ?? "out");
+
+  if (!Number.isFinite(qty) || qty <= 0) {
+    return { ok: false, message: "Enter how many." };
+  }
+
+  const item = await getStockItem(itemId);
+  if (!item) return { ok: false, message: "That item no longer exists." };
+
+  const delta = direction === "in" ? qty : -qty;
+  if (direction === "out" && qty > item.qtyOnHand) {
+    return {
+      ok: false,
+      message: `Only ${item.qtyOnHand} ${item.unit} on hand.`,
+    };
+  }
+
+  const updated = await adjustStock(
+    itemId,
+    delta,
+    String(formData.get("reason") ?? "").trim() ||
+      (direction === "in" ? "Stock received" : "Used on job"),
+    session.name
+  );
+
+  revalidatePath("/admin/stock");
+  revalidatePath(`/admin/stock/${itemId}`);
+  return {
+    ok: true,
+    message: `${direction === "in" ? "Added" : "Removed"} ${qty} ${item.unit}. ${updated?.qtyOnHand ?? 0} now on hand.`,
+  };
+}
+
+/** Used by the scanner: resolves a scanned code to an item page. */
+export async function lookupBarcodeAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+  const code = String(formData.get("code") ?? "").trim();
+  if (!code) return { ok: false, message: "Scan or type a code first." };
+
+  const item = await findStockByCode(code);
+  if (!item) {
+    return {
+      ok: false,
+      message: `Nothing found for "${code}". Add it as a new item to record it against this barcode.`,
+    };
+  }
+  redirect(`/admin/stock/${item.id}`);
 }
 
 // ---------- Invoicing ----------

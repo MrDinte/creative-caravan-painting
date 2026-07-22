@@ -250,6 +250,113 @@ export function formatAud(cents: number): string {
   }).format(cents / 100);
 }
 
+// ---------- Stock and suppliers ----------
+
+export type StockCategory =
+  | "paint"
+  | "parts"
+  | "trim"
+  | "acrylic"
+  | "doors"
+  | "windows"
+  | "consumables"
+  | "other";
+
+export const STOCK_CATEGORY_LABELS: Record<StockCategory, string> = {
+  paint: "Paint",
+  parts: "Parts",
+  trim: "Trim",
+  acrylic: "Acrylic / Perspex",
+  doors: "Doors",
+  windows: "Windows",
+  consumables: "Consumables",
+  other: "Other",
+};
+
+export const STOCK_CATEGORIES = Object.keys(
+  STOCK_CATEGORY_LABELS
+) as StockCategory[];
+
+export interface Supplier {
+  id: string;
+  name: string;
+  contactName: string;
+  phone: string;
+  email: string;
+  website: string;
+  address: string;
+  accountNumber: string;
+  notes: string;
+  createdAt: string;
+}
+
+/** An entry in the supplier logbook — calls, orders, issues, price changes. */
+export interface SupplierLogEntry {
+  id: string;
+  supplierId: string;
+  entry: string;
+  author: string;
+  createdAt: string;
+}
+
+export interface StockItem {
+  id: string;
+  ccpCode: string; // CCP-S-0001 — our own barcode
+  barcode: string; // manufacturer/EAN barcode, "" if none
+  name: string;
+  category: StockCategory;
+  unit: string;
+  qtyOnHand: number;
+  reorderLevel: number;
+  costCents: number; // what we pay
+  saleCents: number; // what we charge
+  supplierId: string;
+  location: string; // shelf/bay
+  notes: string;
+  createdAt: string;
+}
+
+export interface StockMovement {
+  id: string;
+  itemId: string;
+  delta: number; // + received, − used
+  reason: string;
+  author: string;
+  createdAt: string;
+}
+
+export function marginCents(item: Pick<StockItem, "costCents" | "saleCents">) {
+  return item.saleCents - item.costCents;
+}
+
+/** Margin as a percentage of the sale price, which is how retail quotes it. */
+export function marginPercent(
+  item: Pick<StockItem, "costCents" | "saleCents">
+): number {
+  if (item.saleCents <= 0) return 0;
+  return Math.round((marginCents(item) / item.saleCents) * 100);
+}
+
+/** Markup on cost — the number you multiply cost by. Distinct from margin. */
+export function markupPercent(
+  item: Pick<StockItem, "costCents" | "saleCents">
+): number {
+  if (item.costCents <= 0) return 0;
+  return Math.round((marginCents(item) / item.costCents) * 100);
+}
+
+export function stockValueAtCost(items: StockItem[]): number {
+  return items.reduce((sum, i) => sum + i.qtyOnHand * i.costCents, 0);
+}
+
+export function stockValueAtSale(items: StockItem[]): number {
+  return items.reduce((sum, i) => sum + i.qtyOnHand * i.saleCents, 0);
+}
+
+export function isLowStock(item: StockItem): boolean {
+  return item.reorderLevel > 0 && item.qtyOnHand <= item.reorderLevel;
+}
+
 // ---------- Invoicing ----------
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled";

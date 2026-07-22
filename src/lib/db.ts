@@ -12,6 +12,8 @@ import {
   demoTasks,
   demoTimesheets,
   demoInvoices,
+  demoSuppliers,
+  demoStockItems,
   demoUpdates,
 } from "./demo-data";
 import type {
@@ -26,6 +28,11 @@ import type {
   InvoiceStatus,
   Payment,
   Staff,
+  StockCategory,
+  StockItem,
+  StockMovement,
+  Supplier,
+  SupplierLogEntry,
   TimesheetEntry,
   JobUpdate,
   OrderEnquiry,
@@ -39,6 +46,7 @@ import type {
 } from "./types";
 import { PAYROLL_DEFAULTS, isInvoiceSettled } from "./types";
 import { getAdminSession, getCustomerSession } from "./session";
+import { nextCcpStockCode } from "./barcode";
 
 // Data layer with two backends:
 //  - Demo mode (default): seeded in-memory store so the deployed demo works with zero setup.
@@ -63,6 +71,10 @@ interface MemoryStore {
   staffPasswords: Record<string, string>;
   openShifts: Record<string, OpenShift>;
   invoices: Invoice[];
+  suppliers: Supplier[];
+  supplierLog: SupplierLogEntry[];
+  stockItems: StockItem[];
+  stockMovements: StockMovement[];
 }
 
 const globalStore = globalThis as unknown as { __ccpStore?: MemoryStore };
@@ -84,6 +96,10 @@ function mem(): MemoryStore {
       staffPasswords: { ...demoStaffPasswords },
       openShifts: {},
       invoices: structuredClone(demoInvoices),
+      suppliers: structuredClone(demoSuppliers),
+      supplierLog: [],
+      stockItems: structuredClone(demoStockItems),
+      stockMovements: [],
     };
   }
   return globalStore.__ccpStore;
@@ -652,6 +668,292 @@ export async function createTimesheetEntry(
   }
   mem().timesheets.push(entry);
   return entry;
+}
+
+// ---------- Suppliers ----------
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const supplierFromRow = (r: any): Supplier => ({
+  id: r.id,
+  name: r.name,
+  contactName: r.contact_name ?? "",
+  phone: r.phone ?? "",
+  email: r.email ?? "",
+  website: r.website ?? "",
+  address: r.address ?? "",
+  accountNumber: r.account_number ?? "",
+  notes: r.notes ?? "",
+  createdAt: toIsoStr(r.created_at),
+});
+
+const stockFromRow = (r: any): StockItem => ({
+  id: r.id,
+  ccpCode: r.ccp_code,
+  barcode: r.barcode ?? "",
+  name: r.name,
+  category: (r.category ?? "other") as StockCategory,
+  unit: r.unit ?? "each",
+  qtyOnHand: Number(r.qty_on_hand ?? 0),
+  reorderLevel: Number(r.reorder_level ?? 0),
+  costCents: Number(r.cost_cents ?? 0),
+  saleCents: Number(r.sale_cents ?? 0),
+  supplierId: r.supplier_id ?? "",
+  location: r.location ?? "",
+  notes: r.notes ?? "",
+  createdAt: toIsoStr(r.created_at),
+});
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function listSuppliers(): Promise<Supplier[]> {
+  if (hasDatabase()) {
+    const rows = await sql()`select * from suppliers order by name`;
+    return rows.map(supplierFromRow);
+  }
+  return [...mem().suppliers].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getSupplier(id: string): Promise<Supplier | null> {
+  return (await listSuppliers()).find((s) => s.id === id) ?? null;
+}
+
+export async function upsertSupplier(
+  input: Omit<Supplier, "id" | "createdAt"> & { id?: string }
+): Promise<Supplier> {
+  const supplier: Supplier = {
+    ...input,
+    id: input.id ?? makeId(),
+    createdAt: new Date().toISOString(),
+  };
+
+  if (hasDatabase()) {
+    if (input.id) {
+      await sql()`
+        update suppliers
+           set name = ${supplier.name}, contact_name = ${supplier.contactName},
+               phone = ${supplier.phone}, email = ${supplier.email},
+               website = ${supplier.website}, address = ${supplier.address},
+               account_number = ${supplier.accountNumber}, notes = ${supplier.notes}
+         where id = ${input.id}`;
+    } else {
+      await sql()`
+        insert into suppliers (id, name, contact_name, phone, email, website,
+                               address, account_number, notes, created_at)
+        values (${supplier.id}, ${supplier.name}, ${supplier.contactName},
+                ${supplier.phone}, ${supplier.email}, ${supplier.website},
+                ${supplier.address}, ${supplier.accountNumber},
+                ${supplier.notes}, ${supplier.createdAt})`;
+    }
+    return supplier;
+  }
+
+  const store = mem();
+  const idx = store.suppliers.findIndex((s) => s.id === supplier.id);
+  if (idx >= 0) {
+    store.suppliers[idx] = { ...supplier, createdAt: store.suppliers[idx].createdAt };
+    return store.suppliers[idx];
+  }
+  store.suppliers.push(supplier);
+  return supplier;
+}
+
+export async function listSupplierLog(
+  supplierId: string
+): Promise<SupplierLogEntry[]> {
+  if (hasDatabase()) {
+    const rows = await sql()`
+      select * from supplier_log where supplier_id = ${supplierId}
+       order by created_at desc`;
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    return rows.map((r: any) => ({
+      id: r.id,
+      supplierId: r.supplier_id,
+      entry: r.entry,
+      author: r.author ?? "",
+      createdAt: toIsoStr(r.created_at),
+    }));
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }
+  return mem()
+    .supplierLog.filter((l) => l.supplierId === supplierId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function addSupplierLogEntry(
+  supplierId: string,
+  entry: string,
+  author: string
+): Promise<SupplierLogEntry> {
+  const log: SupplierLogEntry = {
+    id: makeId(),
+    supplierId,
+    entry,
+    author,
+    createdAt: new Date().toISOString(),
+  };
+  if (hasDatabase()) {
+    await sql()`
+      insert into supplier_log (id, supplier_id, entry, author, created_at)
+      values (${log.id}, ${supplierId}, ${entry}, ${author}, ${log.createdAt})`;
+    return log;
+  }
+  mem().supplierLog.push(log);
+  return log;
+}
+
+// ---------- Stock ----------
+
+export async function listStockItems(): Promise<StockItem[]> {
+  if (hasDatabase()) {
+    const rows = await sql()`select * from stock_items order by name`;
+    return rows.map(stockFromRow);
+  }
+  return [...mem().stockItems].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function getStockItem(id: string): Promise<StockItem | null> {
+  return (await listStockItems()).find((i) => i.id === id) ?? null;
+}
+
+/** Resolves either our own CCP code or the manufacturer's barcode. */
+export async function findStockByCode(
+  code: string
+): Promise<StockItem | null> {
+  const needle = code.trim();
+  if (!needle) return null;
+
+  if (hasDatabase()) {
+    const rows = await sql()`
+      select * from stock_items
+       where upper(ccp_code) = upper(${needle}) or barcode = ${needle}
+       limit 1`;
+    return rows[0] ? stockFromRow(rows[0]) : null;
+  }
+  return (
+    mem().stockItems.find(
+      (i) =>
+        i.ccpCode.toUpperCase() === needle.toUpperCase() || i.barcode === needle
+    ) ?? null
+  );
+}
+
+export async function nextStockCode(): Promise<string> {
+  const items = await listStockItems();
+  return nextCcpStockCode(items.map((i) => i.ccpCode));
+}
+
+export async function upsertStockItem(
+  input: Omit<StockItem, "id" | "createdAt" | "ccpCode"> & {
+    id?: string;
+    ccpCode?: string;
+  }
+): Promise<StockItem> {
+  const item: StockItem = {
+    ...input,
+    id: input.id ?? makeId(),
+    ccpCode: input.ccpCode || (await nextStockCode()),
+    createdAt: new Date().toISOString(),
+  };
+
+  if (hasDatabase()) {
+    if (input.id) {
+      await sql()`
+        update stock_items
+           set barcode = ${item.barcode || null}, name = ${item.name},
+               category = ${item.category}, unit = ${item.unit},
+               reorder_level = ${item.reorderLevel},
+               cost_cents = ${item.costCents}, sale_cents = ${item.saleCents},
+               supplier_id = ${item.supplierId || null},
+               location = ${item.location}, notes = ${item.notes}
+         where id = ${input.id}`;
+    } else {
+      await sql()`
+        insert into stock_items (id, ccp_code, barcode, name, category, unit,
+                                 qty_on_hand, reorder_level, cost_cents,
+                                 sale_cents, supplier_id, location, notes, created_at)
+        values (${item.id}, ${item.ccpCode}, ${item.barcode || null}, ${item.name},
+                ${item.category}, ${item.unit}, ${item.qtyOnHand},
+                ${item.reorderLevel}, ${item.costCents}, ${item.saleCents},
+                ${item.supplierId || null}, ${item.location}, ${item.notes},
+                ${item.createdAt})`;
+    }
+    return item;
+  }
+
+  const store = mem();
+  const idx = store.stockItems.findIndex((i) => i.id === item.id);
+  if (idx >= 0) {
+    // Quantity only ever moves through adjustStock, so it survives an edit.
+    store.stockItems[idx] = {
+      ...item,
+      qtyOnHand: store.stockItems[idx].qtyOnHand,
+      createdAt: store.stockItems[idx].createdAt,
+    };
+    return store.stockItems[idx];
+  }
+  store.stockItems.push(item);
+  return item;
+}
+
+/**
+ * Moves stock and records why. Quantity is never set directly, so on-hand
+ * always equals the sum of its movements.
+ */
+export async function adjustStock(
+  itemId: string,
+  delta: number,
+  reason: string,
+  author: string
+): Promise<StockItem | null> {
+  if (delta === 0) return getStockItem(itemId);
+
+  if (hasDatabase()) {
+    await sql()`
+      insert into stock_movements (id, item_id, delta, reason, author)
+      values (${makeId()}, ${itemId}, ${delta}, ${reason}, ${author})`;
+    // Clamp at zero: a miscount shouldn't leave negative stock on the shelf.
+    await sql()`
+      update stock_items
+         set qty_on_hand = greatest(0, qty_on_hand + ${delta})
+       where id = ${itemId}`;
+    return getStockItem(itemId);
+  }
+
+  const store = mem();
+  const item = store.stockItems.find((i) => i.id === itemId);
+  if (!item) return null;
+  item.qtyOnHand = Math.max(0, item.qtyOnHand + delta);
+  store.stockMovements.push({
+    id: makeId(),
+    itemId,
+    delta,
+    reason,
+    author,
+    createdAt: new Date().toISOString(),
+  });
+  return item;
+}
+
+export async function listStockMovements(
+  itemId: string
+): Promise<StockMovement[]> {
+  if (hasDatabase()) {
+    const rows = await sql()`
+      select * from stock_movements where item_id = ${itemId}
+       order by created_at desc limit 50`;
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    return rows.map((r: any) => ({
+      id: r.id,
+      itemId: r.item_id,
+      delta: Number(r.delta),
+      reason: r.reason ?? "",
+      author: r.author ?? "",
+      createdAt: toIsoStr(r.created_at),
+    }));
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }
+  return mem()
+    .stockMovements.filter((m) => m.itemId === itemId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 // ---------- Invoices ----------

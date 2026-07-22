@@ -1,5 +1,7 @@
 import type {
   Invoice,
+  StockItem,
+  Supplier,
   TimesheetEntry,
   ContactSubmission,
   GalleryItem,
@@ -367,4 +369,42 @@ export const demoInvoices: Invoice[] = [
     ],
     createdAt: "2026-07-20T01:00:00.000Z",
   },
+];
+
+export const demoSuppliers: Supplier[] = [
+  {
+    id: "sup1", name: "Brisbane Paint Supplies", contactName: "Dan Whitfield",
+    phone: "07 3888 1200", email: "orders@bnepaint.example",
+    website: "https://bnepaint.example", address: "12 Industrial Ave, Brendale QLD 4500",
+    accountNumber: "CCP-4471", notes: "2 pac and primers. 30-day account. Free delivery over $500.",
+    createdAt: "2026-02-01T00:00:00.000Z",
+  },
+  {
+    id: "sup2", name: "Acrylic & Perspex Direct", contactName: "Priya Raman",
+    phone: "07 3555 8890", email: "sales@perspexdirect.example",
+    website: "https://perspexdirect.example", address: "8 Kremzow Rd, Brendale QLD 4500",
+    accountNumber: "AP-2210", notes: "Cut-to-size perspex, curved a specialty. 3–5 day lead time.",
+    createdAt: "2026-02-14T00:00:00.000Z",
+  },
+  {
+    id: "sup3", name: "Caravan Parts Wholesale", contactName: "Mick Doyle",
+    phone: "07 3204 7766", email: "mick@cpwholesale.example",
+    website: "", address: "44 Boundary Rd, Narangba QLD 4504",
+    accountNumber: "CPW-0912", notes: "Windows, hatches, winders, seals. Best prices on bulk orders.",
+    createdAt: "2026-03-08T00:00:00.000Z",
+  },
+];
+
+export const demoStockItems: StockItem[] = [
+  { id: "st1", ccpCode: "CCP-S-0001", barcode: "9310872001234", name: "2 pac topcoat — Gloss White 4L", category: "paint", unit: "tin", qtyOnHand: 6, reorderLevel: 3, costCents: 18500, saleCents: 27500, supplierId: "sup1", location: "Paint store A2", notes: "Base for most resprays.", createdAt: "2026-03-01T00:00:00.000Z" },
+  { id: "st2", ccpCode: "CCP-S-0002", barcode: "9310872005678", name: "2 pac topcoat — Coastal Teal 4L", category: "paint", unit: "tin", qtyOnHand: 2, reorderLevel: 2, costCents: 21000, saleCents: 31500, supplierId: "sup1", location: "Paint store A3", notes: "Feature band colour.", createdAt: "2026-03-01T00:00:00.000Z" },
+  { id: "st3", ccpCode: "CCP-S-0003", barcode: "", name: "Etch primer 4L", category: "paint", unit: "tin", qtyOnHand: 9, reorderLevel: 4, costCents: 11000, saleCents: 16500, supplierId: "sup1", location: "Paint store A1", notes: "", createdAt: "2026-03-01T00:00:00.000Z" },
+  { id: "st4", ccpCode: "CCP-S-0004", barcode: "9315544220017", name: "Perspex sheet 2440×1220 — 3mm clear", category: "acrylic", unit: "sheet", qtyOnHand: 4, reorderLevel: 2, costCents: 14500, saleCents: 24000, supplierId: "sup2", location: "Rack B", notes: "Cut to size for windows.", createdAt: "2026-03-04T00:00:00.000Z" },
+  { id: "st5", ccpCode: "CCP-S-0005", barcode: "9315544220024", name: "Perspex sheet — 4mm tinted", category: "acrylic", unit: "sheet", qtyOnHand: 1, reorderLevel: 2, costCents: 19500, saleCents: 32500, supplierId: "sup2", location: "Rack B", notes: "Low — reorder.", createdAt: "2026-03-04T00:00:00.000Z" },
+  { id: "st6", ccpCode: "CCP-S-0006", barcode: "9300675110099", name: "Window winder assembly", category: "windows", unit: "each", qtyOnHand: 12, reorderLevel: 5, costCents: 3200, saleCents: 6500, supplierId: "sup3", location: "Bin C4", notes: "Fits most Millard and Jayco.", createdAt: "2026-03-10T00:00:00.000Z" },
+  { id: "st7", ccpCode: "CCP-S-0007", barcode: "9300675110105", name: "Window rubber seal — 10m roll", category: "windows", unit: "roll", qtyOnHand: 3, reorderLevel: 2, costCents: 4800, saleCents: 8900, supplierId: "sup3", location: "Bin C5", notes: "", createdAt: "2026-03-10T00:00:00.000Z" },
+  { id: "st8", ccpCode: "CCP-S-0008", barcode: "", name: "Entry door — 1750×600 white", category: "doors", unit: "each", qtyOnHand: 2, reorderLevel: 1, costCents: 68000, saleCents: 105000, supplierId: "sup3", location: "Rack D", notes: "Special order, 2 week lead.", createdAt: "2026-03-12T00:00:00.000Z" },
+  { id: "st9", ccpCode: "CCP-S-0009", barcode: "9312445007781", name: "Checker plate trim — 3m length", category: "trim", unit: "length", qtyOnHand: 7, reorderLevel: 4, costCents: 5600, saleCents: 9900, supplierId: "sup3", location: "Rack E", notes: "", createdAt: "2026-03-12T00:00:00.000Z" },
+  { id: "st10", ccpCode: "CCP-S-0010", barcode: "9311234556677", name: "Masking tape 48mm — carton of 24", category: "consumables", unit: "carton", qtyOnHand: 5, reorderLevel: 2, costCents: 7200, saleCents: 11500, supplierId: "sup1", location: "Consumables shelf", notes: "", createdAt: "2026-03-15T00:00:00.000Z" },
+  { id: "st11", ccpCode: "CCP-S-0011", barcode: "", name: "Globalcote roof sealant 15L", category: "consumables", unit: "drum", qtyOnHand: 1, reorderLevel: 2, costCents: 32000, saleCents: 48000, supplierId: "sup1", location: "Consumables shelf", notes: "Low — used on most reseals.", createdAt: "2026-03-15T00:00:00.000Z" },
 ];
