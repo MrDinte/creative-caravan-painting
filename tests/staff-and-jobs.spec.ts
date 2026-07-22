@@ -71,6 +71,7 @@ test.describe("Job location", () => {
   test.beforeEach(async ({ page }) => login(page));
 
   test("filters jobs by location", async ({ page }) => {
+    seededFixtures();
     await page.goto("/admin/jobs");
     await expect(page.getByTestId("loc-filter-all")).toBeVisible();
     await expect(page.getByTestId("loc-filter-workshop")).toBeVisible();
@@ -93,6 +94,7 @@ test.describe("Job location", () => {
   });
 
   test("job detail shows location and allocation", async ({ page }) => {
+    seededFixtures();
     await page.goto("/admin/jobs");
     await page.getByRole("link", { name: "CCP-2026-003" }).click();
     await expect(page.getByText("Bellmere").first()).toBeVisible();
