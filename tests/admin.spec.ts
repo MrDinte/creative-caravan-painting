@@ -213,6 +213,13 @@ test.describe("Job and task management", () => {
     await page.goto("/admin/jobs");
     await page.getByRole("link", { name: target.job }).click();
 
+    // Wait for the page to settle before pressing anything. Clicking while
+    // React is still attaching its listeners can lose the press outright, and
+    // this branch's client bundle is ~35% larger than main's, which widens
+    // that window enough for emulated mobile Safari to land inside it under
+    // full-suite load.
+    await page.waitForLoadState("networkidle");
+
     // Still read the starting status rather than hardcoding it: the suite can
     // be run repeatedly against a server that keeps its state between runs.
     const CYCLE = ["To Do", "In Progress", "Done"] as const;

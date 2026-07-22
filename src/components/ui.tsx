@@ -14,9 +14,21 @@ import { buttonVariants } from "@heroui/styles";
   Playwright suite are written against it. Swapping the implementation
   underneath keeps that blast radius at zero.
 
-  HeroUI's Button is a React Aria button, so `disabled` has to be forwarded as
-  `isDisabled`; passing the raw DOM attribute would grey it out visually while
-  leaving React Aria's press handling live.
+  Where HeroUI's React components are used and where only its styles are:
+
+    Button (non-submit)  the React component — it is genuinely interactive
+    Button (submit)      native <button>, HeroUI classes  (see note below)
+    ButtonLink           next/link anchor, HeroUI classes
+    Card, Badge          HeroUI's components
+    Fields               native inputs, HeroUI field tokens
+
+  The native cases are all ones where browser semantics matter: form submission,
+  and link behaviour like prefetch and open-in-new-tab.
+
+  (Rendering Card and Badge from HeroUI's styles instead of its components was
+  tried, on the theory that presentational client components were inflating the
+  bundle. Measured: 1,459,001 bytes before, 1,470,335 after — very slightly
+  worse, since @heroui/react is pulled in by Button regardless. Reverted.)
 */
 
 export function Section({
@@ -236,8 +248,8 @@ export function Card({
   className = "",
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
-  // HeroUI's Card supplies its own padding and gap; call sites pass their own
-  // `p-*`, so those are stripped back here and the caller stays in control.
+  // `gap-0 p-0` cancels HeroUI's own spacing: call sites pass their own `p-*`,
+  // and tailwind-merge lets theirs win.
   return (
     <HeroCard className={`gap-0 p-0 ${className}`} {...props}>
       {children}
