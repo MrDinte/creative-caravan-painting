@@ -456,23 +456,62 @@ export async function listPriceBook(): Promise<PriceBookItem[]> {
   );
 }
 
+export async function findPriceBookItemByCode(
+  code: string
+): Promise<PriceBookItem | null> {
+  if (hasDatabase()) {
+    const rows =
+      await sql()`select * from price_book where upper(code) = upper(${code})`;
+    return rows[0] ? priceFromRow(rows[0]) : null;
+  }
+  return (
+    mem().priceBook.find(
+      (p) => p.code.toUpperCase() === code.trim().toUpperCase()
+    ) ?? null
+  );
+}
+
+/**
+ * `code` is the natural key, not `id`. Adding a rate whose code already exists
+ * updates that rate rather than raising a unique violation; editing an existing
+ * rate is keyed on its id so the code itself can be changed.
+ */
 export async function upsertPriceBookItem(
   input: Omit<PriceBookItem, "id"> & { id?: string }
 ): Promise<PriceBookItem> {
   const item: PriceBookItem = { ...input, id: input.id ?? makeId() };
+
   if (hasDatabase()) {
-    await sql()`
+    if (input.id) {
+      await sql()`
+        update price_book
+           set code = ${item.code}, name = ${item.name}, category = ${item.category},
+               unit = ${item.unit}, price_cents = ${item.priceCents}
+         where id = ${input.id}`;
+      return item;
+    }
+    const rows = await sql()`
       insert into price_book (id, code, name, category, unit, price_cents)
-      values (${item.id}, ${item.code}, ${item.name}, ${item.category}, ${item.unit}, ${item.priceCents})
-      on conflict (id) do update
-        set code = excluded.code, name = excluded.name, category = excluded.category,
-            unit = excluded.unit, price_cents = excluded.price_cents`;
-    return item;
+      values (${item.id}, ${item.code}, ${item.name}, ${item.category},
+              ${item.unit}, ${item.priceCents})
+      on conflict (code) do update
+        set name = excluded.name, category = excluded.category,
+            unit = excluded.unit, price_cents = excluded.price_cents
+      returning id`;
+    return { ...item, id: rows[0]?.id ?? item.id };
   }
+
   const store = mem();
-  const idx = store.priceBook.findIndex((p) => p.id === item.id);
-  if (idx >= 0) store.priceBook[idx] = item;
-  else store.priceBook.push(item);
+  const idx = input.id
+    ? store.priceBook.findIndex((p) => p.id === input.id)
+    : store.priceBook.findIndex(
+        (p) => p.code.toUpperCase() === item.code.toUpperCase()
+      );
+  if (idx >= 0) {
+    store.priceBook[idx] = { ...item, id: store.priceBook[idx].id };
+    return store.priceBook[idx];
+  }
+  store.priceBook.push(item);
   return item;
 }
 

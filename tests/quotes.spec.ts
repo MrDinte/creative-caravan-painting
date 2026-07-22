@@ -62,6 +62,25 @@ test.describe("Master price book", () => {
     await expect(page.getByText("$125.00").first()).toBeVisible();
   });
 
+  // Regression: `code` is unique, so re-adding an existing one used to raise a
+  // database constraint violation and render a 500 instead of saving.
+  test("re-adding an existing code updates it instead of erroring", async ({
+    page,
+  }) => {
+    await page.goto("/admin/prices");
+    await page.getByLabel("Code").fill("PB-LAB-01");
+    await page.getByLabel("Description").fill("General workshop labour");
+    await page.getByLabel("Category").fill("Labour");
+    await page.getByLabel("Unit").fill("per hour");
+    await page.getByLabel(/Price \(AUD\)/).fill("110.00");
+    await page.getByTestId("save-price-submit").click();
+
+    await expect(page.getByRole("status")).toContainText(/Saved PB-LAB-01/);
+    await expect(page.locator("h1")).toContainText(/Master Price Book/i);
+    // Still exactly one row for that code — an update, not a duplicate.
+    await expect(page.getByText("PB-LAB-01", { exact: false })).toHaveCount(1);
+  });
+
   test("validates a missing code", async ({ page }) => {
     await page.goto("/admin/prices");
     await page

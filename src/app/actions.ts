@@ -11,6 +11,7 @@ import {
   createTask,
   deletePriceBookItem,
   findJobByCredentials,
+  findPriceBookItemByCode,
   nextJobCode,
   updateJobStatus,
   updateQuoteStatus,
@@ -290,6 +291,16 @@ export async function savePriceBookItemAction(
   }
   if (!Number.isFinite(price) || price < 0) {
     return { ok: false, message: "Enter a valid price." };
+  }
+
+  // Codes are unique. Renaming one rate onto another's code would otherwise
+  // fail as a database constraint violation rather than a readable message.
+  const clash = await findPriceBookItemByCode(code);
+  if (clash && id && clash.id !== id) {
+    return {
+      ok: false,
+      message: `Code ${code} is already used by "${clash.name}". Pick a different code.`,
+    };
   }
 
   await upsertPriceBookItem({

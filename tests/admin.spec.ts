@@ -89,7 +89,12 @@ test.describe("Admin pages", () => {
     }
   });
 
+  // Checks are issued in parallel: against a remote, database-backed
+  // deployment the sequential version exceeded the per-test timeout.
   test("all internal admin links resolve", async ({ page }) => {
+    test.slow();
+
+    const seen = new Set<string>();
     for (const { path } of ADMIN_PAGES) {
       await page.goto(path);
       const hrefs = await page
@@ -99,11 +104,20 @@ test.describe("Admin pages", () => {
             new Set(els.map((e) => (e as HTMLAnchorElement).getAttribute("href")!))
           )
         );
-      for (const href of hrefs) {
-        const res = await page.request.get(href);
-        expect(res.status(), `${href} from ${path}`).toBeLessThan(400);
-      }
+      hrefs.forEach((h) => seen.add(h));
     }
+
+    expect(seen.size, "expected admin links to check").toBeGreaterThan(0);
+
+    const results = await Promise.all(
+      [...seen].map(async (href) => ({
+        href,
+        status: (await page.request.get(href)).status(),
+      }))
+    );
+
+    const broken = results.filter((r) => r.status >= 400);
+    expect(broken, `broken admin links: ${JSON.stringify(broken)}`).toEqual([]);
   });
 });
 
