@@ -72,7 +72,10 @@ test.describe("Admin pages", () => {
     });
   }
 
+  // Each click is a full page load against the database; against a remote
+  // deployment the sequence outgrows the default per-test budget.
   test("sidebar navigation reaches every section", async ({ page }) => {
+    test.slow();
     await page.goto("/admin/dashboard");
     const nav = page.getByRole("navigation", { name: "Admin" });
 
@@ -80,7 +83,11 @@ test.describe("Admin pages", () => {
       ["Calendar", "/admin/calendar"],
       ["Jobs", "/admin/jobs"],
       ["Task Manager", "/admin/tasks"],
+      ["Timesheets", "/admin/timesheets"],
       ["Quotes", "/admin/quotes"],
+      ["Invoices", "/admin/invoices"],
+      ["Stock", "/admin/stock"],
+      ["Suppliers", "/admin/suppliers"],
       ["Price Book", "/admin/prices"],
       ["Enquiries", "/admin/enquiries"],
       ["Dashboard", "/admin/dashboard"],
