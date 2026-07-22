@@ -97,6 +97,34 @@ psql "$DATABASE_URL" -f db/schema.sql
 psql "$DATABASE_URL" -f db/seed.sql
 ```
 
+Or paste both files into the Neon SQL Editor, schema first. Both are safe to
+re-run — every insert is guarded, so a second run is a no-op rather than
+duplicating rows.
+
+Set `DATABASE_URL` in Vercel against **Production** (Development is only used by
+`vercel env pull` for local work, and is often locked when the variable is marked
+sensitive or is integration-managed). Redeploy afterwards — environment variables
+only apply to new builds.
+
+### Two things worth knowing if you extend the data layer
+
+- **Dates come back as `Date` objects.** The driver hydrates `date` and
+  `timestamptz` columns, so `String(row.scheduled_start)` yields a locale string,
+  not `"2026-07-13"`. Use the `toDateStr` / `toIsoStr` helpers in
+  [src/lib/db.ts](src/lib/db.ts); the calendar compares date strings and breaks
+  otherwise.
+- **`price_book.code` is the natural key, not `id`.** Upserts target `code`, so
+  re-adding an existing code updates that rate rather than raising a unique
+  violation.
+
+Both only surface with a real database — demo mode stores plain ISO strings and
+has no constraints — so run the suite against a deployed, DB-backed instance
+before trusting a data-layer change:
+
+```bash
+BASE_URL=https://your-deployment.vercel.app npm test
+```
+
 `db/schema.sql` enables **Row Level Security on every table**. Policies are driven by two
 request-scoped settings the app sets per request:
 
