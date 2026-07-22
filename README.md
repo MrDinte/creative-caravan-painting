@@ -138,6 +138,23 @@ select set_config('app.job_id', '<uuid>',   true);
   `visible_to_customer` — internal notes are unreachable at the database layer, not just in the UI
 - Anonymous: may insert contact submissions and store orders, never read them
 
+## Not built yet
+
+Be aware of these gaps before showing the app to a real customer:
+
+- **No email is sent, anywhere.** No mail provider is installed. The contact
+  form and store checkout write to the database and appear under
+  Admin → Enquiries, but nobody is notified — someone has to check that page.
+- **Quote status “Sent” is a label only.** It records where a quote is up to; it
+  does not deliver anything. Quotes have to be sent manually for now.
+- **No PDF generation.** Quotes render as an on-screen document; there's no file
+  to attach or print cleanly.
+
+Adding real quote emailing needs three things: a mail provider (Resend fits
+Vercel well), a PDF renderer (`@react-pdf/renderer` works server-side via
+`renderToBuffer`), and — the part that isn't code — DNS records on the business
+domain so mail is verified and doesn't land in spam.
+
 ## Stripe
 
 The store runs in enquiry mode until keys are present: orders are recorded and shown in the admin,

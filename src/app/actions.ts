@@ -100,10 +100,11 @@ export async function submitOrder(
   const totalCents = items.reduce((s, i) => s + i.qty * i.priceCents, 0);
   await addOrderEnquiry({ customerName, customerEmail, items, totalCents });
 
+  // No email is sent yet — don't claim one was. See README "Not built yet".
   return {
     ok: true,
     message:
-      "Order received! We've emailed you a confirmation — payment link to follow once Stripe is live.",
+      "Order received! The team will be in touch shortly to arrange payment and delivery.",
   };
 }
 

@@ -176,6 +176,10 @@ export default async function QuoteDetailPage({
             <h2 className="font-display text-lg font-bold text-slate-900">
               Quote status
             </h2>
+            <p className="mt-1 text-xs text-slate-500">
+              Records where the quote is up to. Marking it “Sent” does not
+              email the customer — send it yourself for now.
+            </p>
             <div className="mt-3 space-y-2">
               {(Object.keys(QUOTE_STATUS_LABELS) as QuoteStatus[]).map((s) => (
                 <form key={s} action={setQuoteStatusAction}>
