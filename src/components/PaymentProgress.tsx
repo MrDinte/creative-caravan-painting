@@ -9,8 +9,8 @@ import {
 
 /**
  * Payment progress as a single filled bar. Colour carries meaning — green when
- * settled, amber part paid, teal awaiting — but every state is also labelled,
- * so it doesn't rely on colour alone.
+ * settled, amber part paid, neutral when nothing has been received — but every
+ * state is also labelled, so it doesn't rely on colour alone.
  */
 export function PaymentProgress({
   invoice,

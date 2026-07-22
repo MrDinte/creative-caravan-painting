@@ -68,7 +68,7 @@ export function AddUpdateForm({
           type="checkbox"
           name="visibleToCustomer"
           defaultChecked
-          className="h-5 w-5 rounded border-slate-300 accent-teal-700"
+          className="h-5 w-5 rounded border-slate-300 accent-[var(--brand-solid)]"
         />
         Visible to the customer in their portal
       </label>

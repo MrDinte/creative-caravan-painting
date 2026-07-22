@@ -11,12 +11,14 @@ export const metadata: Metadata = {
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
+// Each pill derives its fill and border from one hue — see .status-pill in
+// globals.css — so the five stay distinguishable in light and dark alike.
 const STATUS_COLOURS: Record<string, string> = {
-  booked: "bg-sky-100 text-sky-900 border-sky-300",
-  in_progress: "bg-teal-100 text-teal-900 border-teal-300",
-  awaiting_parts: "bg-amber-100 text-amber-900 border-amber-300",
-  quality_check: "bg-violet-100 text-violet-900 border-violet-300",
-  completed: "bg-emerald-100 text-emerald-900 border-emerald-300",
+  booked: "status-pill st-booked",
+  in_progress: "status-pill st-progress",
+  awaiting_parts: "status-pill st-parts",
+  quality_check: "status-pill st-quality",
+  completed: "status-pill st-done",
 };
 
 function toKey(d: Date) {
@@ -82,7 +84,7 @@ export default async function CalendarPage({
         <div className="flex items-center gap-2">
           <Link
             href={`/admin/calendar?m=${monthParam(prev)}`}
-            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-slate-300 bg-white px-3 hover:border-brand hover:text-brand"
+            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-slate-300 bg-[var(--surface)] px-3 hover:border-brand hover:text-brand"
             aria-label="Previous month"
           >
             ←
@@ -92,7 +94,7 @@ export default async function CalendarPage({
           </span>
           <Link
             href={`/admin/calendar?m=${monthParam(next)}`}
-            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-slate-300 bg-white px-3 hover:border-brand hover:text-brand"
+            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-lg border border-slate-300 bg-[var(--surface)] px-3 hover:border-brand hover:text-brand"
             aria-label="Next month"
           >
             →
@@ -123,14 +125,14 @@ export default async function CalendarPage({
                     key={i}
                     className={`min-h-[110px] border-b border-r border-slate-200 p-1.5 ${
                       date ? "" : "bg-slate-50"
-                    } ${isToday ? "bg-teal-50" : ""}`}
+                    } ${isToday ? "bg-brand-soft" : ""}`}
                   >
                     {date && (
                       <>
                         <span
                           className={`inline-grid h-6 w-6 place-items-center rounded-full text-xs font-semibold ${
                             isToday
-                              ? "bg-brand text-white"
+                              ? "bg-brand-solid text-white"
                               : "text-slate-500"
                           }`}
                         >

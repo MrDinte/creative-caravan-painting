@@ -130,8 +130,8 @@ export default async function StockPage({
           aria-current={!activeCat && !lowOnly ? "page" : undefined}
           className={`inline-flex min-h-[38px] items-center rounded-full px-4 text-sm font-semibold ${
             !activeCat && !lowOnly
-              ? "bg-brand text-white"
-              : "border border-slate-300 bg-white text-slate-700 hover:border-brand"
+              ? "bg-brand-solid text-white"
+              : "border border-slate-300 bg-[var(--surface)] text-slate-700 hover:border-brand"
           }`}
           data-testid="stock-filter-all"
         >
@@ -143,7 +143,7 @@ export default async function StockPage({
           className={`inline-flex min-h-[38px] items-center rounded-full px-4 text-sm font-semibold ${
             lowOnly
               ? "bg-amber-500 text-white"
-              : "border border-amber-300 bg-white text-amber-800 hover:bg-amber-50"
+              : "border border-amber-300 bg-[var(--surface)] text-amber-800 hover:bg-amber-50"
           }`}
           data-testid="stock-filter-low"
         >
@@ -159,8 +159,8 @@ export default async function StockPage({
               aria-current={activeCat === c ? "page" : undefined}
               className={`inline-flex min-h-[38px] items-center rounded-full px-4 text-sm font-semibold ${
                 activeCat === c
-                  ? "bg-brand text-white"
-                  : "border border-slate-300 bg-white text-slate-700 hover:border-brand"
+                  ? "bg-brand-solid text-white"
+                  : "border border-slate-300 bg-[var(--surface)] text-slate-700 hover:border-brand"
               }`}
               data-testid={`stock-filter-${c}`}
             >

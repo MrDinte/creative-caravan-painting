@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function ServicesPage() {
   return (
     <>
-      <section className="bg-gradient-to-b from-teal-50 to-white">
+      <section className="bg-gradient-to-b from-brand-soft to-[var(--background)]">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
           <h1 className="font-display text-4xl sm:text-5xl font-bold text-slate-900">
             OUR SERVICES
@@ -75,12 +75,12 @@ export default function ServicesPage() {
         </Section>
       ))}
 
-      <Section className="bg-brand text-white">
+      <Section className="bg-brand-solid text-white">
         <Card className="border-none bg-white/10 p-8 text-center backdrop-blur">
           <h2 className="font-display text-3xl font-bold">
             Ready to give your caravan a fresh new look?
           </h2>
-          <p className="mt-3 text-teal-50">
+          <p className="mt-3 text-white/80">
             Call us today on {site.phone} for a FREE quote.
           </p>
           <div className="mt-6 flex flex-col sm:flex-row justify-center gap-3">

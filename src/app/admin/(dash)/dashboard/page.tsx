@@ -144,7 +144,7 @@ export default async function DashboardPage({
               {/* Accent rail — gives the tiles a shared visual anchor. */}
               <span
                 aria-hidden
-                className="absolute inset-y-0 left-0 w-1 bg-brand/70 transition-colors group-hover:bg-brand"
+                className="absolute inset-y-0 left-0 w-1 bg-brand/70 transition-colors group-hover:bg-brand-solid"
               />
               <p className="text-sm text-slate-600">{s.label}</p>
               <p className="mt-1 font-display text-3xl font-bold text-brand">
@@ -184,8 +184,8 @@ export default async function DashboardPage({
                   aria-current={isActive ? "page" : undefined}
                   className={`inline-flex min-h-[36px] items-center rounded-full px-3 text-xs font-semibold transition-colors ${
                     isActive
-                      ? "bg-brand text-white"
-                      : "border border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brand"
+                      ? "bg-brand-solid text-white"
+                      : "border border-slate-300 bg-[var(--surface)] text-slate-700 hover:border-brand hover:text-brand"
                   }`}
                   data-testid={`dash-loc-${t.key ?? "all"}`}
                 >

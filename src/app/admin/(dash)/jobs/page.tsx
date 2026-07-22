@@ -73,8 +73,8 @@ export default async function JobsPage({
               aria-current={isActive ? "page" : undefined}
               className={`inline-flex min-h-[40px] items-center rounded-full px-4 text-sm font-semibold transition-colors ${
                 isActive
-                  ? "bg-brand text-white"
-                  : "border border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brand"
+                  ? "bg-brand-solid text-white"
+                  : "border border-slate-300 bg-[var(--surface)] text-slate-700 hover:border-brand hover:text-brand"
               }`}
               data-testid={`loc-filter-${t.key ?? "all"}`}
             >

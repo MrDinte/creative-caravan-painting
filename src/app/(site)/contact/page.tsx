@@ -12,7 +12,7 @@ export const metadata: Metadata = {
 export default function ContactPage() {
   return (
     <>
-      <section className="bg-gradient-to-b from-teal-50 to-white">
+      <section className="bg-gradient-to-b from-brand-soft to-[var(--background)]">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
           <h1 className="font-display text-4xl sm:text-5xl font-bold text-slate-900">
             CONTACT US
@@ -101,11 +101,11 @@ export default function ContactPage() {
               </div>
             </Card>
 
-            <Card className="bg-brand p-6 text-white">
+            <Card className="bg-brand-solid p-6 text-white">
               <h2 className="font-display text-xl font-bold">
                 Already booked in?
               </h2>
-              <p className="mt-2 text-sm text-teal-50">
+              <p className="mt-2 text-sm text-white/80">
                 Track your van&apos;s progress live with your job code and
                 access code.
               </p>

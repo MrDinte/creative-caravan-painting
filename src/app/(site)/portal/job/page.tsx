@@ -99,7 +99,7 @@ export default async function PortalJobPage() {
                   aria-hidden
                   className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-sm font-bold ${
                     reached
-                      ? "bg-brand text-white"
+                      ? "bg-brand-solid text-white"
                       : "bg-slate-200 text-slate-500"
                   }`}
                 >
@@ -135,7 +135,7 @@ export default async function PortalJobPage() {
             aria-label="Job completion"
           >
             <div
-              className="h-full rounded-full bg-brand transition-all"
+              className="h-full rounded-full bg-brand-solid transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>

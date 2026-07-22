@@ -1,39 +1,268 @@
+@layer theme, base, components, utilities;
+
 @import "tailwindcss";
+@import "@heroui/styles";
 
-:root {
-  --background: #ffffff;
-  --foreground: #0f172a;
+/*
+  Creative Caravan Painting — HeroUI edition.
 
-  /* Brand teal, warmed slightly so it reads less clinical than the flat
-     original and holds up against the amber accent. */
-  --brand: #0d7268;
-  --brand-dark: #0b5d55;
-  --brand-soft: #e6f4f2;
-  --accent: #f5a524;
-  --accent-soft: #fef4e6;
+  Two ideas hold this file together:
 
-  /* Page tint — pure white everywhere makes cards disappear. */
-  --surface: #f7f8fa;
+  1. Everything is a semantic token that flips between light and dark. Nothing
+     downstream names a literal colour.
+  2. The neutral scale the app was originally written against (`text-slate-900`,
+     `bg-slate-50`, `border-slate-200`, and the amber/emerald/rose status tints)
+     is *re-pointed* at those tokens in the `@theme inline` block below. That
+     means ~770 existing utility classes across 66 files became theme-aware
+     without being edited. Rewriting them by hand would have been churn with
+     nowhere to catch a mistake.
 
-  --radius: 0.875rem;
-  --radius-lg: 1.25rem;
+  These blocks are deliberately unlayered: unlayered rules beat anything inside
+  `@layer base`, which is where `@heroui/styles` defines its defaults.
+*/
 
-  /* Layered shadows rather than one hard drop, so depth reads as light
-     falling on a surface instead of a border. */
-  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
-  --shadow-md: 0 2px 4px rgb(15 23 42 / 0.04), 0 6px 16px rgb(15 23 42 / 0.08);
-  --shadow-lg: 0 4px 8px rgb(15 23 42 / 0.04), 0 12px 32px rgb(15 23 42 / 0.1);
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Canvas. A faint blue cast rather than grey — it makes white cards read as
+     lifted instead of merely lighter. */
+  --background: #f4f7fc;
+  --surface: #ffffff;
+  --overlay: #ffffff;
+
+  /* Text roles, darkest to faintest. */
+  --foreground: #0e1a2d;
+  --text-body: #3c4d68;
+  --muted: #5b6c87;
+  --text-faint: #8695ae;
+
+  /* Hairlines and subtle fills. */
+  --border: #e2e9f4;
+  --line-strong: #cbd6e8;
+  --separator: #e2e9f4;
+  --layer-1: #f3f7fd;
+  --layer-2: #e8eff9;
+
+  /* Blue: the identity colour. `--brand` is for type, icons, borders and
+     rings; `--brand-solid` backs filled buttons, where the foreground is
+     always white and so needs a deeper blue to stay legible. In light mode
+     they coincide; in dark they must not. */
+  --brand: #1a5fd0;
+  --brand-solid: #1a5fd0;
+  --brand-dark: #144ba6;
+  --brand-soft: #e7efff;
+
+  /* Orange: reserved for emphasis — focus rings, highlights, the odd CTA.
+     Sparing use is what keeps it loud. */
+  --highlight: #ea6f0e;
+  --highlight-solid: #ea6f0e;
+  --highlight-soft: #fdf0e2;
+
+  /* Permanently dark chrome (footer, image captions, the admin sign-in
+     backdrop). Does not invert — it is dark *by design*, not by theme. */
+  --ink: #0d1728;
+  --ink-soft: #16233a;
+
+  /* Status tints. `-soft` is the fill, `-strong` the text on it. */
+  --ok: #0f9d58;
+  --ok-soft: #e6f6ed;
+  --ok-strong: #0a6b3d;
+  --warn: #d98207;
+  --warn-soft: #fdf3e3;
+  --warn-strong: #92590a;
+  --bad: #dc3545;
+  --bad-soft: #fdebed;
+  --bad-strong: #a51d2a;
+
+  /* HeroUI's own semantic slots, pointed at the same palette so its
+     components and this app's markup cannot drift apart. */
+  --accent: var(--brand-solid);
+  --accent-foreground: #ffffff;
+  --default: var(--layer-2);
+  --default-foreground: var(--foreground);
+  --success: var(--ok);
+  --success-foreground: #ffffff;
+  --warning: var(--warn);
+  --warning-foreground: #ffffff;
+  --danger: var(--bad);
+  --danger-foreground: #ffffff;
+  --focus: var(--highlight);
+  --link: var(--brand);
+  --field-background: #ffffff;
+  --field-foreground: var(--foreground);
+  --field-placeholder: var(--text-faint);
+  --field-border: var(--border);
+
+  /* Backdrop for the inline caravan illustration. */
+  --art-sky-top: #dceefc;
+  --art-sky-bottom: #f6f9fd;
+  --art-ground: #e2e8f0;
+
+  --radius: 0.75rem;
+  --radius-card: 1.25rem;
+
+  /* Layered rather than one hard drop, so depth reads as light falling on a
+     surface instead of an outline. */
+  --shadow-sm: 0 1px 2px rgb(14 26 45 / 0.05), 0 1px 3px rgb(14 26 45 / 0.06);
+  --shadow-md: 0 2px 4px rgb(14 26 45 / 0.04), 0 6px 16px rgb(14 26 45 / 0.08);
+  --shadow-lg: 0 4px 8px rgb(14 26 45 / 0.05), 0 12px 32px rgb(14 26 45 / 0.1);
+  --surface-shadow: var(--shadow-sm);
+  --overlay-shadow: var(--shadow-lg);
+  --field-shadow: inset 0 1px 2px rgb(14 26 45 / 0.04);
+}
+
+.dark,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Navy, not neutral black — it keeps the blue identity present even in the
+     absence of any brand colour on screen. */
+  --background: #0a1220;
+  --surface: #121d31;
+  --overlay: #16233a;
+
+  --foreground: #e9effb;
+  --text-body: #bac7dd;
+  --muted: #93a3bd;
+  --text-faint: #71809b;
+
+  --border: #22314c;
+  --line-strong: #32415f;
+  --separator: #22314c;
+  --layer-1: #16223a;
+  --layer-2: #1d2b45;
+
+  /* The split earns its keep here: #6ba5f7 is readable as text on navy but
+     too pale to carry white button text, so the solid variant stays deeper. */
+  --brand: #6ba5f7;
+  --brand-solid: #2b6fd8;
+  --brand-dark: #2560bd;
+  --brand-soft: #16283f;
+
+  --highlight: #f7924a;
+  --highlight-solid: #d9660b;
+  --highlight-soft: #2b1d10;
+
+  --ink: #060c16;
+  --ink-soft: #101a2c;
+
+  --ok: #34c98a;
+  --ok-soft: #10281f;
+  --ok-strong: #6ee0ac;
+  --warn: #eda13a;
+  --warn-soft: #2a1f0f;
+  --warn-strong: #f6c37c;
+  --bad: #f4707d;
+  --bad-soft: #2b1218;
+  --bad-strong: #ffa5ae;
+
+  --accent: var(--brand-solid);
+  --accent-foreground: #ffffff;
+  --default: var(--layer-2);
+  --default-foreground: var(--foreground);
+  --success: var(--ok);
+  --success-foreground: #06170f;
+  --warning: var(--warn);
+  --warning-foreground: #1c1204;
+  --danger: var(--bad);
+  --danger-foreground: #2b0308;
+  --focus: var(--highlight);
+  --link: var(--brand);
+  --field-background: #16223a;
+  --field-foreground: var(--foreground);
+  --field-placeholder: var(--text-faint);
+  --field-border: var(--border);
+
+  --art-sky-top: #1b2f4c;
+  --art-sky-bottom: #101c30;
+  --art-ground: #1c2942;
+
+  /* Dark surfaces separate by value, not by shadow; keeping the drop shadows
+     here would only muddy them. */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 2px 6px rgb(0 0 0 / 0.45);
+  --shadow-lg: 0 8px 28px rgb(0 0 0 / 0.5);
+  --surface-shadow: none;
+  --overlay-shadow: var(--shadow-lg);
+  --field-shadow: none;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-card: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+
   --color-brand: var(--brand);
+  --color-brand-solid: var(--brand-solid);
   --color-brand-dark: var(--brand-dark);
   --color-brand-soft: var(--brand-soft);
-  --color-accent: var(--accent);
-  --color-accent-soft: var(--accent-soft);
-  --color-surface: var(--surface);
+  --color-highlight: var(--highlight);
+  --color-highlight-solid: var(--highlight-solid);
+  --color-highlight-soft: var(--highlight-soft);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-layer-1: var(--layer-1);
+  --color-layer-2: var(--layer-2);
+
+  /*
+    The compatibility bridge. Utilities already written throughout the app keep
+    working, but now resolve to whichever theme is active.
+
+      text-slate-900  → strongest text        bg-slate-50  → subtle fill
+      text-slate-600  → body copy             border-slate-200 → hairline
+      text-slate-500  → secondary text        bg-emerald-50 → success tint
+
+    Opacity modifiers (`bg-slate-50/60`) still work: Tailwind wraps these in
+    color-mix() the same as any other colour.
+  */
+  --color-slate-900: var(--foreground);
+  --color-slate-800: var(--foreground);
+  --color-slate-700: var(--text-body);
+  --color-slate-600: var(--text-body);
+  --color-slate-500: var(--muted);
+  --color-slate-400: var(--text-faint);
+  --color-slate-300: var(--line-strong);
+  --color-slate-200: var(--border);
+  --color-slate-100: var(--layer-2);
+  --color-slate-50: var(--layer-1);
+
+  --color-emerald-50: var(--ok-soft);
+  --color-emerald-500: var(--ok);
+  --color-emerald-600: var(--ok);
+  --color-emerald-700: var(--ok-strong);
+  --color-emerald-800: var(--ok-strong);
+  --color-emerald-900: var(--ok-strong);
+
+  --color-amber-50: var(--warn-soft);
+  --color-amber-100: var(--warn-soft);
+  --color-amber-500: var(--warn);
+  --color-amber-600: var(--warn);
+  --color-amber-700: var(--warn-strong);
+  --color-amber-800: var(--warn-strong);
+  --color-amber-900: var(--warn-strong);
+
+  --color-rose-50: var(--bad-soft);
+  --color-rose-100: var(--bad-soft);
+  --color-rose-500: var(--bad);
+  --color-rose-600: var(--bad);
+  --color-rose-700: var(--bad-strong);
+  --color-rose-800: var(--bad-strong);
+  --color-rose-900: var(--bad-strong);
+
+  --color-sky-50: var(--brand-soft);
+  --color-sky-600: var(--brand);
+  --color-sky-700: var(--brand);
+  --color-sky-800: var(--brand);
+
+  --radius-card: var(--radius-card);
+  --shadow-soft: var(--shadow-sm);
+  --shadow-lift: var(--shadow-md);
+  --shadow-float: var(--shadow-lg);
+
   --font-sans: var(--font-poppins), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), Georgia, serif;
 }
@@ -50,8 +279,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Focus visibility — required so keyboard users and tests can see focus
-   clearly. Two-tone so it shows on both light and dark surfaces. */
+/* Focus visibility, in orange so it never disappears against a blue control.
+   Required for the keyboard-focus assertions in the Playwright suite. */
 a:focus-visible,
 button:focus-visible,
 input:focus-visible,
@@ -59,7 +288,7 @@ select:focus-visible,
 textarea:focus-visible,
 summary:focus-visible,
 [tabindex]:focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--highlight);
   outline-offset: 2px;
   border-radius: 0.5rem;
 }
@@ -102,4 +331,45 @@ summary:focus-visible,
    scroll edge legible rather than cutting content off mid-cell. */
 .scroll-fade {
   mask-image: linear-gradient(to right, black calc(100% - 24px), transparent);
+}
+
+/*
+  Job status pills on the calendar.
+
+  These are the one place needing five hues that stay clearly distinct from one
+  another *and* legible on both a white and a navy background. Rather than
+  hand-tune ten colour pairs, each modifier sets a single base hue and the
+  shared rule derives the fill and border from it. A translucent tint works on
+  either canvas, so only the hue itself has to change between themes.
+*/
+@layer components {
+  .status-pill {
+    background-color: color-mix(in oklab, var(--st) 16%, transparent);
+    color: var(--st);
+    border-color: color-mix(in oklab, var(--st) 40%, transparent);
+  }
+  .st-booked {
+    --st: #0b7fc4;
+  }
+  .st-progress {
+    --st: var(--brand);
+  }
+  .st-parts {
+    --st: var(--warn);
+  }
+  .st-quality {
+    --st: #7c3aed;
+  }
+  .st-done {
+    --st: var(--ok);
+  }
+
+  .dark .st-booked,
+  [data-theme="dark"] .st-booked {
+    --st: #56b3ec;
+  }
+  .dark .st-quality,
+  [data-theme="dark"] .st-quality {
+    --st: #b09cfb;
+  }
 }

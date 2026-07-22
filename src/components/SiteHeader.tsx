@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { nav, site } from "@/lib/site";
 import { useCart } from "./CartProvider";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -15,7 +16,7 @@ export function SiteHeader() {
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-[var(--surface)]/85 backdrop-blur-md">
       <div className="mx-auto max-w-6xl px-4">
         <div className="flex h-16 items-center justify-between gap-4">
           <Link
@@ -25,7 +26,7 @@ export function SiteHeader() {
           >
             <span
               aria-hidden
-              className="grid h-9 w-9 place-items-center rounded-full bg-brand text-white font-bold"
+              className="grid h-9 w-9 place-items-center rounded-full bg-brand-solid text-white font-bold"
             >
               CC
             </span>
@@ -65,20 +66,22 @@ export function SiteHeader() {
                 🛒
               </span>
               {count > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-white">
+                <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-brand-solid px-1 text-[11px] font-bold text-white">
                   {count}
                 </span>
               )}
             </Link>
+            <ThemeToggle className="ml-1" />
             <a
               href={site.phoneHref}
-              className="ml-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-slate-900 hover:brightness-95"
+              className="ml-1 rounded-full bg-highlight-solid px-4 py-2 text-sm font-semibold text-white hover:brightness-110"
             >
               Call {site.phone}
             </a>
           </nav>
 
           <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
             <Link
               href="/store/cart"
               className="relative grid h-11 w-11 place-items-center rounded-lg text-slate-700"
@@ -89,7 +92,7 @@ export function SiteHeader() {
                 🛒
               </span>
               {count > 0 && (
-                <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[11px] font-bold text-white">
+                <span className="absolute right-0 top-0 grid h-5 min-w-5 place-items-center rounded-full bg-brand-solid px-1 text-[11px] font-bold text-white">
                   {count}
                 </span>
               )}
@@ -113,7 +116,7 @@ export function SiteHeader() {
       {open && (
         <nav
           id="mobile-menu"
-          className="md:hidden border-t border-slate-200 bg-white px-4 py-3"
+          className="md:hidden border-t border-slate-200 bg-[var(--surface)] px-4 py-3"
           aria-label="Mobile"
         >
           <ul className="flex flex-col gap-1">
@@ -136,7 +139,7 @@ export function SiteHeader() {
             <li>
               <a
                 href={site.phoneHref}
-                className="mt-1 block rounded-lg bg-accent px-4 py-3 text-center text-base font-semibold text-slate-900"
+                className="mt-1 block rounded-lg bg-highlight-solid px-4 py-3 text-center text-base font-semibold text-white"
               >
                 Call {site.phone} — FREE quote
               </a>

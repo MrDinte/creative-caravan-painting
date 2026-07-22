@@ -3,7 +3,7 @@ import { nav, site } from "@/lib/site";
 
 export function SiteFooter() {
   return (
-    <footer className="mt-auto bg-slate-900 text-slate-300">
+    <footer className="mt-auto bg-ink text-white/75">
       <div className="mx-auto max-w-6xl px-4 py-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
         <div>
           <h2 className="font-display text-lg font-semibold text-white">
@@ -51,7 +51,7 @@ export function SiteFooter() {
               </a>
             </li>
             <li>{site.address}</li>
-            <li className="text-slate-400">ABN {site.abn}</li>
+            <li className="text-white/60">ABN {site.abn}</li>
           </ul>
         </div>
 
@@ -81,7 +81,7 @@ export function SiteFooter() {
               </a>
             </li>
             <li>
-              <Link href="/admin" className="text-slate-400 hover:text-white">
+              <Link href="/admin" className="text-white/60 hover:text-white">
                 Staff Login
               </Link>
             </li>
@@ -89,8 +89,8 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="border-t border-slate-800">
-        <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-slate-400 flex flex-col sm:flex-row justify-between gap-2">
+      <div className="border-t border-white/10">
+        <div className="mx-auto max-w-6xl px-4 py-4 text-xs text-white/60 flex flex-col sm:flex-row justify-between gap-2">
           <p>© {new Date().getFullYear()} Creative Caravan Painting. All rights reserved.</p>
           <p>Demo rebuild — Next.js, Tailwind CSS &amp; Neon.</p>
         </div>

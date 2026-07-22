@@ -15,13 +15,16 @@ export default async function AdminDashLayout({
   if (!session) redirect("/admin");
 
   return (
-    <div className="flex min-h-screen flex-col bg-surface">
-      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
+    // bg-background, not bg-surface: under HeroUI's naming `surface` is the
+    // card colour, so using it here would paint the canvas and the cards on it
+    // the same white and flatten the whole dashboard.
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-[var(--surface)]/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
             <span
               aria-hidden
-              className="grid h-9 w-9 place-items-center rounded-full bg-brand font-bold text-white"
+              className="grid h-9 w-9 place-items-center rounded-full bg-brand-solid font-bold text-white"
             >
               CC
             </span>

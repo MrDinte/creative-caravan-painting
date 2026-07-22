@@ -1,10 +1,13 @@
 // Inline SVG caravan illustration — no external images needed, scales crisply on mobile.
 // Colours are data-driven so the gallery can show distinct before/after paint schemes.
 
+// Defaults are the house colours — blue stripe, orange pinstripe. Gallery and
+// store entries pass their own, because those are real paint schemes on real
+// customers' vans and must not follow the site theme.
 export function VanArt({
   body = "#ffffff",
-  stripe = "#0f766e",
-  accent = "#14b8a6",
+  stripe = "#1a5fd0",
+  accent = "#ea6f0e",
   className = "",
   label,
 }: {
@@ -22,14 +25,16 @@ export function VanArt({
       aria-label={label ?? "Caravan illustration"}
     >
       <defs>
+        {/* The scene behind the van *does* follow the theme, so the artwork
+            doesn't glare as a white block on a dark page. */}
         <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#e0f2fe" />
-          <stop offset="100%" stopColor="#f8fafc" />
+          <stop offset="0%" stopColor="var(--art-sky-top)" />
+          <stop offset="100%" stopColor="var(--art-sky-bottom)" />
         </linearGradient>
       </defs>
       <rect width="320" height="200" fill="url(#sky)" />
       {/* ground */}
-      <rect y="160" width="320" height="40" fill="#e2e8f0" />
+      <rect y="160" width="320" height="40" fill="var(--art-ground)" />
       {/* tow hitch */}
       <rect x="20" y="120" width="46" height="8" rx="4" fill="#475569" />
       {/* body */}

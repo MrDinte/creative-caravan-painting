@@ -192,7 +192,7 @@ export function StaffManager({ staff }: { staff: Staff[] }) {
                   type="checkbox"
                   name="active"
                   defaultChecked={editing.active}
-                  className="h-5 w-5 rounded border-slate-300 accent-teal-700"
+                  className="h-5 w-5 rounded border-slate-300 accent-[var(--brand-solid)]"
                 />
                 Active — show in allocation dropdowns
               </label>

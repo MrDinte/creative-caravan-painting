@@ -11,7 +11,11 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-[radial-gradient(ellipse_at_top_left,var(--brand-soft),transparent_55%),radial-gradient(ellipse_at_top_right,var(--accent-soft),transparent_50%)]">
+      {/* Two soft washes — blue from the left, orange from the right — so the
+          hero carries both brand colours without a hard block of either.
+          --highlight-soft, not --accent-soft: HeroUI owns the latter and
+          defines it as a tint of its own accent, which is the blue. */}
+      <section className="relative overflow-hidden bg-[radial-gradient(ellipse_at_top_left,var(--brand-soft),transparent_55%),radial-gradient(ellipse_at_top_right,var(--highlight-soft),transparent_50%)]">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="animate-fade-up">
@@ -65,10 +69,10 @@ export default async function HomePage() {
               <div className="overflow-hidden rounded-3xl border border-slate-200/80 shadow-[0_8px_16px_rgb(15_23_42_/_0.06),0_24px_56px_rgb(15_23_42_/_0.12)]">
                 <VanArt
                   body="#ffffff"
-                  stripe="#0f766e"
-                  accent="#14b8a6"
+                  stripe="#1a5fd0"
+                  accent="#ea6f0e"
                   className="w-full h-auto"
-                  label="Freshly resprayed caravan in coastal teal and white"
+                  label="Freshly resprayed caravan in deep blue and white with an orange pinstripe"
                 />
               </div>
             </div>
@@ -112,11 +116,11 @@ export default async function HomePage() {
               </div>
             </Card>
           ))}
-          <Card className="flex flex-col justify-center bg-brand p-6 text-white">
+          <Card className="flex flex-col justify-center bg-brand-solid p-6 text-white">
             <h3 className="font-display text-xl font-bold">
               Not sure what you need?
             </h3>
-            <p className="mt-2 text-sm text-teal-50">
+            <p className="mt-2 text-sm text-white/80">
               Call us today on {site.phone} for a FREE quote — we&apos;ll talk
               you through the options.
             </p>
@@ -149,13 +153,13 @@ export default async function HomePage() {
               <div className="grid grid-cols-2">
                 <div className="relative">
                   <VanArt {...g.before} className="w-full h-auto" label={`${g.title} before`} />
-                  <span className="absolute left-2 top-2 rounded-full bg-slate-900/80 px-2 py-1 text-[10px] font-bold uppercase text-white">
+                  <span className="absolute left-2 top-2 rounded-full bg-ink/80 px-2 py-1 text-[10px] font-bold uppercase text-white">
                     Before
                   </span>
                 </div>
                 <div className="relative">
                   <VanArt {...g.after} className="w-full h-auto" label={`${g.title} after`} />
-                  <span className="absolute left-2 top-2 rounded-full bg-brand px-2 py-1 text-[10px] font-bold uppercase text-white">
+                  <span className="absolute left-2 top-2 rounded-full bg-brand-solid px-2 py-1 text-[10px] font-bold uppercase text-white">
                     After
                   </span>
                 </div>
@@ -220,17 +224,17 @@ export default async function HomePage() {
       </Section>
 
       {/* Contact CTA */}
-      <Section className="bg-brand text-white">
+      <Section className="bg-brand-solid text-white">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
           <div>
             <h2 className="font-display text-3xl sm:text-4xl font-bold">
               CONTACT US
             </h2>
-            <p className="mt-4 text-lg text-teal-50">
+            <p className="mt-4 text-lg text-white/80">
               Questions, requests, or in need of a quote? Feel free to reach
               out, we&apos;d love to hear from you.
             </p>
-            <div className="mt-6 space-y-2 text-teal-50">
+            <div className="mt-6 space-y-2 text-white/80">
               <p>
                 <a href={site.phoneHref} className="font-semibold hover:underline">
                   {site.phone}

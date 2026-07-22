@@ -81,7 +81,7 @@ export function PhotoPicker({
           onChange={(e) => {
             if (e.target.files?.length) handleFiles(e.target.files);
           }}
-          className="block w-full text-sm text-slate-600 file:mr-3 file:min-h-[44px] file:cursor-pointer file:rounded-full file:border-0 file:bg-brand file:px-5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
+          className="block w-full text-sm text-slate-600 file:mr-3 file:min-h-[44px] file:cursor-pointer file:rounded-full file:border-0 file:bg-brand-solid file:px-5 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-dark"
         />
       </label>
       <p className="mt-1 text-xs text-slate-500">

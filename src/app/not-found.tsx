@@ -14,7 +14,7 @@ export default function NotFound() {
         <div className="mt-8 flex flex-col sm:flex-row justify-center gap-3">
           <Link
             href="/"
-            className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-brand px-6 font-semibold text-white hover:bg-brand-dark"
+            className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-brand-solid px-6 font-semibold text-white hover:bg-brand-dark"
           >
             Back to home
           </Link>

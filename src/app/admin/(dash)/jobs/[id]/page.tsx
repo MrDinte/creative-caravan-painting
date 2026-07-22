@@ -177,7 +177,7 @@ export default async function JobDetailPage({
                   key={u.id}
                   className={`rounded-xl border p-4 ${
                     u.visibleToCustomer
-                      ? "border-slate-200 bg-white"
+                      ? "border-slate-200 bg-[var(--surface)]"
                       : "border-amber-200 bg-amber-50"
                   }`}
                 >

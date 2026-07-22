@@ -32,10 +32,10 @@ export function BeforeAfter({ item }: { item: GalleryItem }) {
           style={{ left: `${pos}%` }}
           aria-hidden
         />
-        <span className="absolute left-3 top-3 rounded-full bg-slate-900/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+        <span className="absolute left-3 top-3 rounded-full bg-ink/80 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
           Before
         </span>
-        <span className="absolute right-3 top-3 rounded-full bg-brand px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
+        <span className="absolute right-3 top-3 rounded-full bg-brand-solid px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
           After
         </span>
       </div>
@@ -50,7 +50,7 @@ export function BeforeAfter({ item }: { item: GalleryItem }) {
         max={100}
         value={pos}
         onChange={(e) => setPos(Number(e.target.value))}
-        className="mt-4 w-full accent-teal-700"
+        className="mt-4 w-full accent-[var(--brand-solid)]"
         aria-label={`Reveal before and after for ${item.title}`}
       />
     </div>

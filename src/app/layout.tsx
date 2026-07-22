@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Poppins, Fraunces } from "next/font/google";
+import { Providers } from "./providers";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -44,12 +45,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // suppressHydrationWarning: next-themes writes the theme class onto <html>
+    // before React hydrates, so the server markup legitimately differs here.
     <html
       lang="en-AU"
+      suppressHydrationWarning
       className={`${poppins.variable} ${fraunces.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-white text-slate-900">
-        {children}
+      <body className="min-h-full flex flex-col bg-background text-foreground">
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

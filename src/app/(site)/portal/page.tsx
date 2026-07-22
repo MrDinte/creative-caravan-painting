@@ -38,11 +38,11 @@ export default async function PortalLoginPage() {
             </h2>
             <p className="mt-2 text-sm text-amber-900">
               Try job code{" "}
-              <code className="rounded bg-white px-1.5 py-0.5 font-mono font-semibold">
+              <code className="rounded bg-[var(--surface)] px-1.5 py-0.5 font-mono font-semibold">
                 CCP-2026-001
               </code>{" "}
               with access code{" "}
-              <code className="rounded bg-white px-1.5 py-0.5 font-mono font-semibold">
+              <code className="rounded bg-[var(--surface)] px-1.5 py-0.5 font-mono font-semibold">
                 VAN123
               </code>
               .

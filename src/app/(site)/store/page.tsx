@@ -20,7 +20,7 @@ export default async function StorePage() {
 
   return (
     <>
-      <section className="bg-gradient-to-b from-teal-50 to-white">
+      <section className="bg-gradient-to-b from-brand-soft to-[var(--background)]">
         <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
           <h1 className="font-display text-4xl sm:text-5xl font-bold text-slate-900">
             Store

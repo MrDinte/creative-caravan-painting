@@ -38,7 +38,7 @@ export function AdjustStockForm({
           className={`min-h-[48px] rounded-xl border-2 font-semibold transition-colors ${
             direction === "out"
               ? "border-rose-500 bg-rose-50 text-rose-800"
-              : "border-slate-300 bg-white text-slate-600"
+              : "border-slate-300 bg-[var(--surface)] text-slate-600"
           }`}
           data-testid="direction-out"
         >
@@ -50,7 +50,7 @@ export function AdjustStockForm({
           className={`min-h-[48px] rounded-xl border-2 font-semibold transition-colors ${
             direction === "in"
               ? "border-emerald-500 bg-emerald-50 text-emerald-800"
-              : "border-slate-300 bg-white text-slate-600"
+              : "border-slate-300 bg-[var(--surface)] text-slate-600"
           }`}
           data-testid="direction-in"
         >

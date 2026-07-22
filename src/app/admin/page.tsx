@@ -17,7 +17,7 @@ export default async function AdminLoginPage() {
   const showDemo = !process.env.ADMIN_PASSWORD;
 
   return (
-    <main className="flex flex-1 items-center justify-center bg-slate-900 px-4 py-16">
+    <main className="flex flex-1 items-center justify-center bg-ink px-4 py-16">
       <div className="w-full max-w-md">
         <Link
           href="/"
@@ -25,7 +25,7 @@ export default async function AdminLoginPage() {
         >
           <span
             aria-hidden
-            className="grid h-10 w-10 place-items-center rounded-full bg-brand font-bold"
+            className="grid h-10 w-10 place-items-center rounded-full bg-brand-solid font-bold"
           >
             CC
           </span>
@@ -63,7 +63,7 @@ export default async function AdminLoginPage() {
           )}
         </Card>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-6 text-center text-sm text-white/60">
           <Link href="/" className="hover:text-white">
             ← Back to the website
           </Link>

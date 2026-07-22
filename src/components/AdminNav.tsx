@@ -34,8 +34,8 @@ export function AdminNav({ accessLevel }: { accessLevel: AccessLevel }) {
             aria-current={active ? "page" : undefined}
             className={`flex min-h-[44px] shrink-0 items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-medium transition-all ${
               active
-                ? "bg-brand text-white shadow-[0_2px_8px_rgb(13_114_104_/_0.25)]"
-                : "text-slate-600 hover:bg-white hover:text-slate-900 hover:shadow-[0_1px_3px_rgb(15_23_42_/_0.08)]"
+                ? "bg-brand-solid text-white shadow-[0_2px_8px_rgb(13_114_104_/_0.25)]"
+                : "text-slate-600 hover:bg-[var(--surface)] hover:text-slate-900 hover:shadow-[0_1px_3px_rgb(15_23_42_/_0.08)]"
             }`}
           >
             <span aria-hidden>{l.icon}</span>

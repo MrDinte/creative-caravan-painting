@@ -22,7 +22,9 @@ export const services: Service[] = [
       "Cut, polish and finishing",
     ],
     cta: "Talk to Us About Your Van Today",
-    art: { body: "#ffffff", stripe: "#0f766e", accent: "#14b8a6" },
+    // The lead service wears the house colours; the rest below deliberately
+    // vary, to show the range of schemes a customer can pick from.
+    art: { body: "#ffffff", stripe: "#1a5fd0", accent: "#ea6f0e" },
   },
   {
     slug: "interior-exterior-renovations",

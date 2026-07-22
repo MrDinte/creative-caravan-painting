@@ -137,7 +137,7 @@ export function BarcodeScanner({
         <div>
           <video
             ref={videoRef}
-            className="w-full rounded-xl border border-slate-300 bg-slate-900"
+            className="w-full rounded-xl border border-slate-300 bg-ink"
             playsInline
             muted
             aria-label="Camera view for barcode scanning"

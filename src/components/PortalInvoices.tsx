@@ -139,7 +139,7 @@ export function PortalInvoices({
                     >
                       <button
                         type="submit"
-                        className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full bg-accent px-6 font-semibold text-slate-900 hover:brightness-95"
+                        className="inline-flex min-h-[48px] w-full items-center justify-center rounded-full bg-highlight-solid px-6 font-semibold text-slate-900 hover:brightness-95"
                         data-testid={`pay-now-${inv.invoiceNumber}`}
                       >
                         Pay by card

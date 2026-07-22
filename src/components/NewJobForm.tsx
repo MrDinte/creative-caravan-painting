@@ -25,7 +25,7 @@ export function NewJobForm({ staff = [] }: { staff?: Staff[] }) {
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href="/admin/jobs"
-              className="inline-flex min-h-[44px] items-center rounded-full bg-brand px-5 text-sm font-semibold text-white hover:bg-brand-dark"
+              className="inline-flex min-h-[44px] items-center rounded-full bg-brand-solid px-5 text-sm font-semibold text-white hover:bg-brand-dark"
             >
               View all jobs
             </Link>
