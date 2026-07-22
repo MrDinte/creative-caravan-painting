@@ -64,21 +64,27 @@ test.describe("Master price book", () => {
 
   // Regression: `code` is unique, so re-adding an existing one used to raise a
   // database constraint violation and render a 500 instead of saving.
+  // PB-WIN-03 rather than PB-LAB-01: the "edits an existing rate" test above
+  // mutates PB-LAB-01, and these run in parallel.
   test("re-adding an existing code updates it instead of erroring", async ({
     page,
   }) => {
     await page.goto("/admin/prices");
-    await page.getByLabel("Code").fill("PB-LAB-01");
-    await page.getByLabel("Description").fill("General workshop labour");
-    await page.getByLabel("Category").fill("Labour");
-    await page.getByLabel("Unit").fill("per hour");
-    await page.getByLabel(/Price \(AUD\)/).fill("110.00");
+    await page.getByLabel("Code").fill("PB-WIN-03");
+    await page.getByLabel("Description").fill("Perspex supply & cut — curved");
+    await page.getByLabel("Category").fill("Windows");
+    await page.getByLabel("Unit").fill("per window");
+    await page.getByLabel(/Price \(AUD\)/).fill("380.00");
     await page.getByTestId("save-price-submit").click();
 
-    await expect(page.getByRole("status")).toContainText(/Saved PB-LAB-01/);
+    // The page must survive: previously this raised a unique violation on
+    // price_book.code and rendered a server-error screen.
+    await expect(page.getByRole("status")).toContainText(/Saved PB-WIN-03/);
     await expect(page.locator("h1")).toContainText(/Master Price Book/i);
-    // Still exactly one row for that code — an update, not a duplicate.
-    await expect(page.getByText("PB-LAB-01", { exact: false })).toHaveCount(1);
+
+    // Exactly one row for that code — updated, not duplicated. Scoped to the
+    // list entry so it can't also match the "Saved …" confirmation text.
+    await expect(page.getByText("PB-WIN-03 · per window")).toHaveCount(1);
   });
 
   test("validates a missing code", async ({ page }) => {
