@@ -20,6 +20,19 @@
 -- by default, and Neon's default role owns these tables. Without FORCE the
 -- policies below would be decorative.
 --
+-- FORCE IS STILL NOT ENOUGH ON NEON. Verified on this database:
+--
+--   select rolname, rolbypassrls from pg_roles where rolname = current_user;
+--   -- neondb_owner | true
+--
+-- The BYPASSRLS attribute overrides FORCE, so while the application connects
+-- as neondb_owner these policies never apply. Enabling them changes nothing
+-- and breaks nothing — which is why it is safe to run now — but it buys no
+-- protection until the app connects as a role without BYPASSRLS.
+--
+-- See 006-app-role.sql for that step. Run this file first; it is a
+-- prerequisite, not the finish line.
+--
 -- Scope, honestly stated: this constrains the application, so a missing WHERE
 -- clause or an injection cannot return another customer's rows. It is not a
 -- boundary against someone holding the connection string, who can set
