@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "./ui";
 
 /**
@@ -24,6 +24,12 @@ type BarcodeDetectorCtor = new (options?: {
   formats?: string[];
 }) => BarcodeDetectorLike;
 
+// Whether we've hydrated. The value never changes after mount, so the
+// subscribe callback has nothing to listen to.
+const subscribeNever = () => () => {};
+const getMountedTrue = () => true;
+const getMountedFalse = () => false;
+
 function getDetectorCtor(): BarcodeDetectorCtor | null {
   if (typeof window === "undefined") return null;
   const ctor = (window as unknown as { BarcodeDetector?: BarcodeDetectorCtor })
@@ -40,11 +46,21 @@ export function BarcodeScanner({
   const streamRef = useRef<MediaStream | null>(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState("");
-  // Checked lazily on the client: BarcodeDetector doesn't exist during the
-  // server render, and a lazy initialiser avoids setting state in an effect.
-  const [supported] = useState<boolean | null>(() =>
-    typeof window === "undefined" ? null : getDetectorCtor() !== null
+
+  // Detector support can only be read on the client, but the first client
+  // render must still match the server's HTML. useSyncExternalStore gives a
+  // distinct server snapshot for exactly this, so hydration agrees and only
+  // then does the real value apply.
+  //
+  // Reading it directly during the first render instead caused a mismatch on
+  // WebKit (server: unknown, client: unsupported). React discarded and
+  // rebuilt the tree, which intermittently broke form submits on this page.
+  const mounted = useSyncExternalStore(
+    subscribeNever,
+    getMountedTrue,
+    getMountedFalse
   );
+  const supported = mounted ? getDetectorCtor() !== null : null;
 
   // Always release the camera — leaving it on drains the phone and leaves the
   // indicator light showing.
