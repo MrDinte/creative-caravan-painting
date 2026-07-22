@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { writesData } from "./helpers";
 
 const ADMIN_PAGES = [
   { path: "/admin/dashboard", heading: /Dashboard/i },
@@ -153,6 +154,7 @@ test.describe("Job and task management", () => {
   test("creates a job with an auto-generated job code and access code", async ({
     page,
   }) => {
+    writesData();
     await page.goto("/admin/jobs/new");
     await page.getByLabel("Job title").fill("Playwright Test Respray");
     await page.getByLabel("Customer name").fill("Test Customer");
@@ -180,6 +182,7 @@ test.describe("Job and task management", () => {
   });
 
   test("adds a task that gets a sequential work ID", async ({ page }) => {
+    writesData();
     await page.goto("/admin/jobs");
     await page.getByRole("link", { name: "CCP-2026-003" }).click();
 
@@ -238,6 +241,7 @@ test.describe("Job and task management", () => {
   test("a customer-visible update appears in the portal, an internal one does not", async ({
     page,
   }) => {
+    writesData();
     await page.goto("/admin/jobs");
     await page.getByRole("link", { name: "CCP-2026-004" }).click();
 

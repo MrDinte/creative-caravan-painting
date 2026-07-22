@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { writesData } from "./helpers";
 
 async function login(page: Page) {
   await page.goto("/admin");
@@ -36,6 +37,7 @@ test.describe("Master price book", () => {
   });
 
   test("adds a new rate", async ({ page }) => {
+    writesData();
     await page.goto("/admin/prices");
     await page.getByLabel("Code").fill("PB-TEST-99");
     await page.getByLabel("Description").fill("Playwright test rate");
@@ -174,6 +176,7 @@ test.describe("Quote builder", () => {
   });
 
   test("saves a quote and opens its detail page", async ({ page }) => {
+    writesData();
     await page.goto("/admin/quotes/new");
     await page.getByLabel("Customer name").fill("Full Quote Flow");
     await page.getByLabel("Email").fill("flow@example.com");
@@ -220,6 +223,7 @@ test.describe("Quote lifecycle", () => {
   // Conversion now opens a form so dates, staff and location can be set up
   // front rather than defaulted and corrected afterwards.
   test("converts an accepted quote into a job", async ({ page }) => {
+    writesData();
     await page.goto("/admin/quotes");
     await page.getByRole("link", { name: "Q-2026-014" }).click();
     await page.getByTestId("convert-quote").click();

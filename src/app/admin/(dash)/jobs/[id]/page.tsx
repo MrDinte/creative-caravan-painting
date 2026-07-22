@@ -5,6 +5,7 @@ import { Badge, Button, Card } from "@/components/ui";
 import { AddTaskForm } from "@/components/AddTaskForm";
 import { AddUpdateForm } from "@/components/AddUpdateForm";
 import { EditJobForm } from "@/components/EditJobForm";
+import { isBlobConfigured } from "@/lib/blob";
 import { setJobStatusAction, setTaskStatusAction } from "@/app/actions";
 import { getJob, listStaff, listTasks, listUpdates } from "@/lib/db";
 import {
@@ -164,7 +165,10 @@ export default async function JobDetailPage({
               Anything marked visible appears instantly in the customer portal.
             </p>
             <div className="mt-4">
-              <AddUpdateForm jobId={job.id} />
+              <AddUpdateForm
+                jobId={job.id}
+                photoUploadsEnabled={isBlobConfigured()}
+              />
             </div>
 
             <ul className="mt-6 space-y-3">
@@ -193,7 +197,25 @@ export default async function JobDetailPage({
                       </time>
                     </div>
                   </div>
-                  <p className="mt-2 text-slate-700">{u.message}</p>
+                  {u.message && (
+                    <p className="mt-2 text-slate-700">{u.message}</p>
+                  )}
+                  {u.photoUrls.length > 0 && (
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {u.photoUrls.map((url) => (
+                        <li key={url}>
+                          <a href={url} target="_blank" rel="noopener noreferrer">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={url}
+                              alt="Job progress photo"
+                              className="h-24 w-24 rounded-lg border border-slate-200 object-cover hover:brightness-95"
+                            />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
             </ul>

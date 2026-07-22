@@ -170,9 +170,27 @@ export default async function PortalJobPage() {
                     {formatDateTime(u.createdAt)}
                   </time>
                 </div>
-                <p className="mt-2 leading-relaxed text-slate-700">
-                  {u.message}
-                </p>
+                {u.message && (
+                  <p className="mt-2 leading-relaxed text-slate-700">
+                    {u.message}
+                  </p>
+                )}
+                {u.photoUrls.length > 0 && (
+                  <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {u.photoUrls.map((url) => (
+                      <li key={url}>
+                        <a href={url} target="_blank" rel="noopener noreferrer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={url}
+                            alt={`Progress photo on ${job.jobCode}`}
+                            className="aspect-square w-full rounded-lg border border-slate-200 object-cover hover:brightness-95"
+                          />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Card>
             ))}
           </div>

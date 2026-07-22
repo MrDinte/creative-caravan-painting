@@ -58,6 +58,7 @@ export interface JobUpdate {
   author: string;
   message: string;
   visibleToCustomer: boolean;
+  photoUrls: string[];
   createdAt: string;
 }
 

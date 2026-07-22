@@ -146,8 +146,23 @@ const updateFromRow = (r: any): JobUpdate => ({
   author: r.author,
   message: r.message,
   visibleToCustomer: r.visible_to_customer,
+  photoUrls: parsePhotoUrls(r.photo_urls),
   createdAt: toIsoStr(r.created_at),
 });
+
+// jsonb comes back as a parsed array, but older drivers hand back a string.
+function parsePhotoUrls(v: unknown): string[] {
+  if (Array.isArray(v)) return v.filter((u): u is string => typeof u === "string");
+  if (typeof v === "string" && v.trim()) {
+    try {
+      const parsed = JSON.parse(v);
+      return Array.isArray(parsed) ? parsed.filter((u) => typeof u === "string") : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 const priceFromRow = (r: any): PriceBookItem => ({
   id: r.id,
@@ -450,7 +465,8 @@ export async function addUpdate(
   jobId: string,
   author: string,
   message: string,
-  visibleToCustomer: boolean
+  visibleToCustomer: boolean,
+  photoUrls: string[] = []
 ): Promise<JobUpdate> {
   const update: JobUpdate = {
     id: makeId(),
@@ -458,13 +474,16 @@ export async function addUpdate(
     author,
     message,
     visibleToCustomer,
+    photoUrls,
     createdAt: new Date().toISOString(),
   };
   if (hasDatabase()) {
     await sql()`
-      insert into job_updates (id, job_id, author, message, visible_to_customer, created_at)
+      insert into job_updates (id, job_id, author, message, visible_to_customer,
+                               photo_urls, created_at)
       values (${update.id}, ${update.jobId}, ${update.author}, ${update.message},
-              ${update.visibleToCustomer}, ${update.createdAt})`;
+              ${update.visibleToCustomer}, ${JSON.stringify(photoUrls)},
+              ${update.createdAt})`;
     return update;
   }
   mem().updates.push(update);

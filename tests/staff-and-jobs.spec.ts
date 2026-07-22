@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { writesData } from "./helpers";
 
 async function login(page: Page) {
   await page.goto("/admin");
@@ -19,6 +20,7 @@ test.describe("Staff management", () => {
   });
 
   test("adds a team member", async ({ page }) => {
+    writesData();
     await page.goto("/admin/staff");
     const name = `Tester ${Date.now().toString().slice(-5)}`;
     await page.getByTestId("staff-add-form").getByLabel("Name").fill(name);
@@ -142,6 +144,7 @@ test.describe("Converting a quote", () => {
   test("lets you set dates, staff and location before creating the job", async ({
     page,
   }) => {
+    writesData();
     await page.goto("/admin/quotes");
     await page.getByRole("link", { name: "Q-2026-015" }).click();
 
@@ -172,6 +175,46 @@ test.describe("Converting a quote", () => {
 
     await expect(page.getByTestId("form-error")).toContainText(
       /End date must be/i
+    );
+  });
+});
+
+test.describe("Job update photos", () => {
+  test.beforeEach(async ({ page }) => login(page));
+
+  test("the update form offers a photo picker", async ({ page }) => {
+    await page.goto("/admin/jobs");
+    await page.getByRole("link", { name: "CCP-2026-001" }).click();
+
+    const form = page.getByTestId("add-update-form");
+    await expect(form).toBeVisible();
+
+    // Either the picker is live, or it explains why it isn't — never silence.
+    const input = page.getByTestId("photo-input");
+    const notice = page.getByText(/Photo uploads are off/i);
+    await expect(input.or(notice).first()).toBeVisible();
+  });
+
+  test("an update can be posted without a photo", async ({ page }) => {
+    writesData();
+    await page.goto("/admin/jobs");
+    await page.getByRole("link", { name: "CCP-2026-001" }).click();
+
+    await page
+      .getByPlaceholder("Base coat is down and looking great…")
+      .fill("Photo-less update from the suite");
+    await page.getByTestId("add-update-submit").click();
+
+    await expect(page.getByRole("status")).toContainText(/customer can see/i);
+  });
+
+  test("an empty update with no photo is rejected", async ({ page }) => {
+    await page.goto("/admin/jobs");
+    await page.getByRole("link", { name: "CCP-2026-002" }).click();
+    await page.getByTestId("add-update-submit").click();
+
+    await expect(page.getByRole("status")).toContainText(
+      /Write an update or attach a photo/i
     );
   });
 });

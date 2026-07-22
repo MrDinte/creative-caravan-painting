@@ -64,6 +64,8 @@ create table if not exists job_updates (
   author              text not null,
   message             text not null,
   visible_to_customer boolean not null default true,
+  -- Public URLs of photos held in Vercel Blob.
+  photo_urls          jsonb not null default '[]'::jsonb,
   created_at          timestamptz not null default now()
 );
 

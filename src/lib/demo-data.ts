@@ -104,12 +104,12 @@ export const demoTasks: Task[] = [
 ];
 
 export const demoUpdates: JobUpdate[] = [
-  { id: "u1", jobId: "j1", author: "Tim", message: "Van booked in — colours confirmed: teal feature band over 2 pac white.", visibleToCustomer: true, createdAt: "2026-07-13T10:00:00.000Z" },
-  { id: "u2", jobId: "j1", author: "Jake", message: "Prep complete. Panels sanded back and masked, ready for spray booth.", visibleToCustomer: true, createdAt: "2026-07-15T15:30:00.000Z" },
-  { id: "u3", jobId: "j1", author: "Tim", message: "Base coat down and looking great — feature band goes on this week.", visibleToCustomer: true, createdAt: "2026-07-18T11:00:00.000Z" },
-  { id: "u4", jobId: "j1", author: "Tim", message: "Internal note: order extra teal tint for touch-up kit.", visibleToCustomer: false, createdAt: "2026-07-18T11:05:00.000Z" },
-  { id: "u5", jobId: "j2", author: "Tim", message: "Frames cleaned and polished. Curved perspex on order — ETA next week.", visibleToCustomer: true, createdAt: "2026-07-21T09:00:00.000Z" },
-  { id: "u6", jobId: "j4", author: "Jake", message: "Interior fit-out finished! Final inspection underway, pickup Friday.", visibleToCustomer: true, createdAt: "2026-07-20T14:00:00.000Z" },
+  { id: "u1", jobId: "j1", author: "Tim", message: "Van booked in — colours confirmed: teal feature band over 2 pac white.", visibleToCustomer: true, photoUrls: [], createdAt: "2026-07-13T10:00:00.000Z" },
+  { id: "u2", jobId: "j1", author: "Jake", message: "Prep complete. Panels sanded back and masked, ready for spray booth.", visibleToCustomer: true, photoUrls: [], createdAt: "2026-07-15T15:30:00.000Z" },
+  { id: "u3", jobId: "j1", author: "Tim", message: "Base coat down and looking great — feature band goes on this week.", visibleToCustomer: true, photoUrls: [], createdAt: "2026-07-18T11:00:00.000Z" },
+  { id: "u4", jobId: "j1", author: "Tim", message: "Internal note: order extra teal tint for touch-up kit.", visibleToCustomer: false, photoUrls: [], createdAt: "2026-07-18T11:05:00.000Z" },
+  { id: "u5", jobId: "j2", author: "Tim", message: "Frames cleaned and polished. Curved perspex on order — ETA next week.", visibleToCustomer: true, photoUrls: [], createdAt: "2026-07-21T09:00:00.000Z" },
+  { id: "u6", jobId: "j4", author: "Jake", message: "Interior fit-out finished! Final inspection underway, pickup Friday.", visibleToCustomer: true, photoUrls: [], createdAt: "2026-07-20T14:00:00.000Z" },
 ];
 
 export const demoProducts: Product[] = [

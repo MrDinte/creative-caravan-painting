@@ -368,16 +368,39 @@ export async function addUpdateAction(
   const message = String(formData.get("message") ?? "").trim();
   const visibleToCustomer = formData.get("visibleToCustomer") === "on";
 
-  if (!message) return { ok: false, message: "Write an update first." };
+  // Photos upload straight from the browser to Blob; only their URLs arrive
+  // here. Restrict to our own Blob host so arbitrary URLs can't be injected.
+  let photoUrls: string[] = [];
+  try {
+    const raw = JSON.parse(String(formData.get("photoUrls") ?? "[]"));
+    if (Array.isArray(raw)) {
+      photoUrls = raw
+        .filter((u): u is string => typeof u === "string")
+        .filter((u) => /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i.test(u))
+        .slice(0, 12);
+    }
+  } catch {
+    photoUrls = [];
+  }
 
-  await addUpdate(jobId, session.name, message, visibleToCustomer);
+  if (!message && photoUrls.length === 0) {
+    return { ok: false, message: "Write an update or attach a photo first." };
+  }
+
+  await addUpdate(jobId, session.name, message, visibleToCustomer, photoUrls);
   revalidatePath(`/admin/jobs/${jobId}`);
   revalidatePath("/portal/job");
+
+  const photoNote =
+    photoUrls.length > 0
+      ? ` ${photoUrls.length} photo${photoUrls.length === 1 ? "" : "s"} attached.`
+      : "";
   return {
     ok: true,
-    message: visibleToCustomer
-      ? "Update posted — the customer can see this now."
-      : "Internal note saved (not visible to the customer).",
+    message:
+      (visibleToCustomer
+        ? "Update posted — the customer can see this now."
+        : "Internal note saved (not visible to the customer).") + photoNote,
   };
 }
 
