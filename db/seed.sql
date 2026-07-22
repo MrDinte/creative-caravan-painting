@@ -49,6 +49,8 @@ join jobs j on j.job_code = v.job_code
 on conflict (work_id) do nothing;
 
 -- ---------- Job updates ----------
+-- job_updates has no natural unique key, so guard on (job_id, message) to keep
+-- this file safe to re-run. Without this, every run appends another copy.
 insert into job_updates (job_id, author, message, visible_to_customer)
 select j.id, v.author, v.message, v.visible
 from (values
@@ -59,7 +61,11 @@ from (values
   ('CCP-2026-002', 'Tim',  'Frames cleaned and polished. Curved perspex on order — ETA next week.',  true),
   ('CCP-2026-004', 'Jake', 'Interior fit-out finished! Final inspection underway, pickup Friday.',   true)
 ) as v(job_code, author, message, visible)
-join jobs j on j.job_code = v.job_code;
+join jobs j on j.job_code = v.job_code
+where not exists (
+  select 1 from job_updates existing
+  where existing.job_id = j.id and existing.message = v.message
+);
 
 -- ---------- Example quotes ----------
 insert into quotes (quote_number, customer_name, customer_email, customer_phone, van_make_model, status, notes, valid_until) values
@@ -79,9 +85,19 @@ from (values
   ('Q-2026-015', 'PB-SEAL-02','Window / hatch reseal',                           6,  18500)
 ) as v(quote_number, code, description, qty, unit_price)
 join quotes q     on q.quote_number = v.quote_number
-join price_book pb on pb.code = v.code;
+join price_book pb on pb.code = v.code
+where not exists (
+  select 1 from quote_lines existing
+  where existing.quote_id = q.id and existing.description = v.description
+);
 
 -- A custom line with no price book link.
 insert into quote_lines (quote_id, price_book_item_id, description, qty, unit_price_cents)
 select q.id, null, 'Supply + fit new roof hatch (custom)', 1, 42000
-from quotes q where q.quote_number = 'Q-2026-015';
+from quotes q
+where q.quote_number = 'Q-2026-015'
+  and not exists (
+    select 1 from quote_lines existing
+    where existing.quote_id = q.id
+      and existing.description = 'Supply + fit new roof hatch (custom)'
+  );
