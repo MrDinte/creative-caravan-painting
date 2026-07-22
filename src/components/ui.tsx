@@ -67,13 +67,14 @@ export function ButtonLink({
   variant = "primary",
   className = "",
   external = false,
+  ...props
 }: {
   href: string;
   children: React.ReactNode;
   variant?: ButtonVariant;
   className?: string;
   external?: boolean;
-}) {
+} & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href">) {
   const cls = `${buttonBase} ${variants[variant]} ${className}`;
   if (external || href.startsWith("http") || href.startsWith("tel:") || href.startsWith("mailto:")) {
     return (
@@ -83,13 +84,14 @@ export function ButtonLink({
         {...(href.startsWith("http")
           ? { target: "_blank", rel: "noopener noreferrer" }
           : {})}
+        {...props}
       >
         {children}
       </a>
     );
   }
   return (
-    <Link href={href} className={cls}>
+    <Link href={href} className={cls} {...props}>
       {children}
     </Link>
   );

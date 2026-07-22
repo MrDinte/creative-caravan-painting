@@ -217,10 +217,13 @@ test.describe("Quote lifecycle", () => {
     await expect(page.getByText("Declined").first()).toBeVisible();
   });
 
+  // Conversion now opens a form so dates, staff and location can be set up
+  // front rather than defaulted and corrected afterwards.
   test("converts an accepted quote into a job", async ({ page }) => {
     await page.goto("/admin/quotes");
     await page.getByRole("link", { name: "Q-2026-014" }).click();
     await page.getByTestId("convert-quote").click();
+    await page.getByTestId("confirm-convert-quote").click();
 
     await expect(page).toHaveURL(/\/admin\/jobs\/[a-z0-9-]+$/i);
     await expect(page.getByText(/CCP-\d{4}-\d{3}/).first()).toBeVisible();

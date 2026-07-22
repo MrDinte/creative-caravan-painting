@@ -35,6 +35,16 @@ export default async function HomePage() {
                   Contact Us Today!
                 </ButtonLink>
               </div>
+              <p className="mt-4 text-sm text-slate-600">
+                Already booked in?{" "}
+                <Link
+                  href="/portal"
+                  className="font-semibold text-brand underline underline-offset-2 hover:text-brand-dark"
+                  data-testid="hero-portal-link"
+                >
+                  Track your van in the customer portal →
+                </Link>
+              </p>
               <dl className="mt-10 grid grid-cols-3 gap-4 max-w-md">
                 {[
                   { k: "2 pac", v: "Lasting quality paint" },
@@ -234,9 +244,17 @@ export default async function HomePage() {
               <p>{site.address}</p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-3 lg:justify-end">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 lg:justify-end">
             <ButtonLink href="/contact" variant="accent">
               Contact Us Today!
+            </ButtonLink>
+            <ButtonLink
+              href="/portal"
+              variant="outline"
+              className="!border-white !text-white hover:!bg-white hover:!text-brand"
+              data-testid="cta-portal-link"
+            >
+              Track my van
             </ButtonLink>
             <ButtonLink
               href="/store"

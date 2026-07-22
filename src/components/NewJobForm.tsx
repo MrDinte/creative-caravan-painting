@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { Button, Card, Field, inputClass } from "./ui";
+import { AssigneeField, LocationField } from "./JobFields";
 import { createJobAction, type FormState } from "@/app/actions";
+import type { Staff } from "@/lib/types";
 
 const initialState: FormState = { ok: false, message: "" };
 
-export function NewJobForm() {
+export function NewJobForm({ staff = [] }: { staff?: Staff[] }) {
   const [state, formAction, pending] = useActionState(
     createJobAction,
     initialState
@@ -90,6 +92,11 @@ export function NewJobForm() {
                 className={inputClass}
               />
             </Field>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <AssigneeField staff={staff} />
+            <LocationField />
           </div>
 
           <Field label="Notes">

@@ -7,6 +7,7 @@ import {
   demoPriceBook,
   demoProducts,
   demoQuotes,
+  demoStaff,
   demoTasks,
   demoUpdates,
 } from "./demo-data";
@@ -14,7 +15,9 @@ import type {
   ContactSubmission,
   GalleryItem,
   Job,
+  JobLocation,
   JobStatus,
+  Staff,
   JobUpdate,
   OrderEnquiry,
   PriceBookItem,
@@ -44,6 +47,7 @@ interface MemoryStore {
   orders: OrderEnquiry[];
   priceBook: PriceBookItem[];
   quotes: Quote[];
+  staff: Staff[];
 }
 
 const globalStore = globalThis as unknown as { __ccpStore?: MemoryStore };
@@ -60,6 +64,7 @@ function mem(): MemoryStore {
       orders: structuredClone(demoOrders),
       priceBook: structuredClone(demoPriceBook),
       quotes: structuredClone(demoQuotes),
+      staff: structuredClone(demoStaff),
     };
   }
   return globalStore.__ccpStore;
@@ -111,7 +116,17 @@ const jobFromRow = (r: any): Job => ({
   accessCode: r.access_code,
   scheduledStart: toDateStr(r.scheduled_start),
   scheduledEnd: toDateStr(r.scheduled_end),
+  assignedTo: r.assigned_to ?? "",
+  location: (r.location ?? "workshop") as JobLocation,
   notes: r.notes ?? "",
+  createdAt: toIsoStr(r.created_at),
+});
+
+const staffFromRow = (r: any): Staff => ({
+  id: r.id,
+  name: r.name,
+  role: r.role ?? "",
+  active: r.active ?? true,
   createdAt: toIsoStr(r.created_at),
 });
 
@@ -220,14 +235,122 @@ export async function createJob(
   if (hasDatabase()) {
     await sql()`
       insert into jobs (id, job_code, title, customer_name, customer_email, van_make_model,
-                        status, access_code, scheduled_start, scheduled_end, notes, created_at)
+                        status, access_code, scheduled_start, scheduled_end, assigned_to,
+                        location, notes, created_at)
       values (${job.id}, ${job.jobCode}, ${job.title}, ${job.customerName}, ${job.customerEmail},
               ${job.vanMakeModel}, ${job.status}, ${job.accessCode}, ${job.scheduledStart},
-              ${job.scheduledEnd}, ${job.notes}, ${job.createdAt})`;
+              ${job.scheduledEnd}, ${job.assignedTo || null}, ${job.location},
+              ${job.notes}, ${job.createdAt})`;
     return job;
   }
   mem().jobs.push(job);
   return job;
+}
+
+/** Editable fields on an existing job. Job code and access code never change. */
+export type JobEdit = Pick<
+  Job,
+  | "title"
+  | "customerName"
+  | "customerEmail"
+  | "vanMakeModel"
+  | "scheduledStart"
+  | "scheduledEnd"
+  | "assignedTo"
+  | "location"
+  | "notes"
+>;
+
+export async function updateJob(
+  id: string,
+  edit: JobEdit
+): Promise<Job | null> {
+  if (hasDatabase()) {
+    await sql()`
+      update jobs
+         set title = ${edit.title},
+             customer_name = ${edit.customerName},
+             customer_email = ${edit.customerEmail},
+             van_make_model = ${edit.vanMakeModel},
+             scheduled_start = ${edit.scheduledStart},
+             scheduled_end = ${edit.scheduledEnd},
+             assigned_to = ${edit.assignedTo || null},
+             location = ${edit.location},
+             notes = ${edit.notes}
+       where id = ${id}`;
+    return getJob(id);
+  }
+  const job = mem().jobs.find((j) => j.id === id);
+  if (!job) return null;
+  Object.assign(job, edit);
+  return job;
+}
+
+// ---------- Staff ----------
+
+export async function listStaff(activeOnly = false): Promise<Staff[]> {
+  if (hasDatabase()) {
+    const rows = activeOnly
+      ? await sql()`select * from staff where active order by name`
+      : await sql()`select * from staff order by active desc, name`;
+    return rows.map(staffFromRow);
+  }
+  const all = [...mem().staff].sort(
+    (a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name)
+  );
+  return activeOnly ? all.filter((s) => s.active) : all;
+}
+
+export async function createStaff(
+  name: string,
+  role: string
+): Promise<Staff> {
+  const member: Staff = {
+    id: makeId(),
+    name,
+    role,
+    active: true,
+    createdAt: new Date().toISOString(),
+  };
+  if (hasDatabase()) {
+    await sql()`
+      insert into staff (id, name, role, active, created_at)
+      values (${member.id}, ${member.name}, ${member.role}, true, ${member.createdAt})`;
+    return member;
+  }
+  mem().staff.push(member);
+  return member;
+}
+
+export async function updateStaff(
+  id: string,
+  changes: { name: string; role: string; active: boolean }
+): Promise<Staff | null> {
+  if (hasDatabase()) {
+    await sql()`
+      update staff set name = ${changes.name}, role = ${changes.role},
+                       active = ${changes.active}
+       where id = ${id}`;
+    const rows = await sql()`select * from staff where id = ${id}`;
+    return rows[0] ? staffFromRow(rows[0]) : null;
+  }
+  const member = mem().staff.find((s) => s.id === id);
+  if (!member) return null;
+  Object.assign(member, changes);
+  return member;
+}
+
+/**
+ * Staff are deactivated rather than deleted so historical job allocations and
+ * task assignees keep resolving to a real person.
+ */
+export async function deactivateStaff(id: string): Promise<void> {
+  if (hasDatabase()) {
+    await sql()`update staff set active = false where id = ${id}`;
+    return;
+  }
+  const member = mem().staff.find((s) => s.id === id);
+  if (member) member.active = false;
 }
 
 export async function updateJobStatus(

@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
-import {
-  convertQuoteToJobAction,
-  setQuoteStatusAction,
-} from "@/app/actions";
-import { getQuote, listPriceBook } from "@/lib/db";
+import { setQuoteStatusAction } from "@/app/actions";
+import { ConvertQuoteForm } from "@/components/ConvertQuoteForm";
+import { getQuote, listPriceBook, listStaff } from "@/lib/db";
 import {
   QUOTE_STATUS_LABELS,
   formatAud,
@@ -37,7 +35,10 @@ export default async function QuoteDetailPage({
   const quote = await getQuote(id);
   if (!quote) notFound();
 
-  const priceBook = await listPriceBook();
+  const [priceBook, staff] = await Promise.all([
+    listPriceBook(),
+    listStaff(true),
+  ]);
   const bookById = new Map(priceBook.map((p) => [p.id, p]));
 
   const subtotal = quoteSubtotalCents(quote);
@@ -206,25 +207,9 @@ export default async function QuoteDetailPage({
               Convert this quote into a scheduled job with its own job code and
               customer portal access.
             </p>
-            <form action={convertQuoteToJobAction} className="mt-4">
-              <input type="hidden" name="quoteId" value={quote.id} />
-              <input type="hidden" name="customerName" value={quote.customerName} />
-              <input type="hidden" name="customerEmail" value={quote.customerEmail} />
-              <input type="hidden" name="vanMakeModel" value={quote.vanMakeModel} />
-              <input
-                type="hidden"
-                name="title"
-                value={quote.lines[0]?.description ?? "Caravan work"}
-              />
-              <Button
-                type="submit"
-                variant="accent"
-                className="w-full !min-h-[44px] !py-2"
-                data-testid="convert-quote"
-              >
-                Convert to job
-              </Button>
-            </form>
+            <div className="mt-4">
+              <ConvertQuoteForm quote={quote} staff={staff} />
+            </div>
           </Card>
 
           <Card className="p-6">

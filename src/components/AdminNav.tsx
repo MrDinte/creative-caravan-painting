@@ -10,6 +10,7 @@ const links = [
   { href: "/admin/tasks", label: "Task Manager", icon: "✅" },
   { href: "/admin/quotes", label: "Quotes", icon: "🧾" },
   { href: "/admin/prices", label: "Price Book", icon: "💲" },
+  { href: "/admin/staff", label: "Staff", icon: "👷" },
   { href: "/admin/enquiries", label: "Enquiries", icon: "📥" },
 ];
 

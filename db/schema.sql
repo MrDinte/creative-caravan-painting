@@ -18,6 +18,16 @@ create extension if not exists "pgcrypto";
 
 -- ---------- Tables ----------
 
+-- Workshop staff. Deactivated rather than deleted so historical allocations
+-- keep resolving to a real person.
+create table if not exists staff (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null,
+  role        text default '',
+  active      boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+
 create table if not exists jobs (
   id               uuid primary key default gen_random_uuid(),
   job_code         text unique not null,
@@ -30,6 +40,9 @@ create table if not exists jobs (
   access_code      text not null,
   scheduled_start  date not null,
   scheduled_end    date not null,
+  assigned_to      uuid references staff(id) on delete set null,
+  location         text not null default 'workshop'
+                     check (location in ('workshop','bellmere')),
   notes            text default '',
   created_at       timestamptz not null default now()
 );

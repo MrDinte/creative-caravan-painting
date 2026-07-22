@@ -7,6 +7,24 @@ export type JobStatus =
 
 export type TaskStatus = "todo" | "in_progress" | "done";
 
+/** Where the van physically is. Add sites here as the business grows. */
+export type JobLocation = "workshop" | "bellmere";
+
+export const JOB_LOCATION_LABELS: Record<JobLocation, string> = {
+  workshop: "Workshop",
+  bellmere: "Bellmere",
+};
+
+export const JOB_LOCATIONS = Object.keys(JOB_LOCATION_LABELS) as JobLocation[];
+
+export interface Staff {
+  id: string;
+  name: string;
+  role: string;
+  active: boolean;
+  createdAt: string;
+}
+
 export interface Job {
   id: string;
   jobCode: string; // e.g. CCP-2026-001
@@ -18,6 +36,8 @@ export interface Job {
   accessCode: string; // customer portal access code
   scheduledStart: string; // ISO date
   scheduledEnd: string; // ISO date
+  assignedTo: string; // staff id, "" when unallocated
+  location: JobLocation;
   notes: string;
   createdAt: string;
 }

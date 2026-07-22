@@ -186,7 +186,8 @@ test.describe("Job and task management", () => {
     await page.getByPlaceholder("Sand and prep exterior panels").fill(
       "Playwright generated task"
     );
-    await page.getByPlaceholder("Assign to…").fill("Tester");
+    // Assignee is now a dropdown fed from the staff list.
+    await page.getByTestId("add-task-form").getByRole("combobox").selectOption("Tim");
     await page.getByTestId("add-task-submit").click();
 
     await expect(page.getByRole("status")).toContainText(

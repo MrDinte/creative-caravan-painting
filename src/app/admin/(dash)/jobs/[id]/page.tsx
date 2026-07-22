@@ -4,9 +4,11 @@ import { notFound } from "next/navigation";
 import { Badge, Button, Card } from "@/components/ui";
 import { AddTaskForm } from "@/components/AddTaskForm";
 import { AddUpdateForm } from "@/components/AddUpdateForm";
+import { EditJobForm } from "@/components/EditJobForm";
 import { setJobStatusAction, setTaskStatusAction } from "@/app/actions";
-import { getJob, listTasks, listUpdates } from "@/lib/db";
+import { getJob, listStaff, listTasks, listUpdates } from "@/lib/db";
 import {
+  JOB_LOCATION_LABELS,
   JOB_STATUS_LABELS,
   TASK_STATUS_LABELS,
   type JobStatus,
@@ -33,12 +35,14 @@ export default async function JobDetailPage({
   const job = await getJob(id);
   if (!job) notFound();
 
-  const [tasks, updates] = await Promise.all([
+  const [tasks, updates, staff] = await Promise.all([
     listTasks(job.id),
     listUpdates(job.id),
+    listStaff(true),
   ]);
 
   const done = tasks.filter((t) => t.status === "done").length;
+  const assignee = staff.find((s) => s.id === job.assignedTo);
 
   return (
     <div>
@@ -63,10 +67,20 @@ export default async function JobDetailPage({
           <p className="mt-1 text-slate-600">
             {job.customerName} · {job.vanMakeModel}
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Badge tone="slate">📍 {JOB_LOCATION_LABELS[job.location]}</Badge>
+            <Badge tone={assignee ? "brand" : "amber"}>
+              👷 {assignee ? assignee.name : "Unallocated"}
+            </Badge>
+          </div>
         </div>
         <Badge tone={job.status === "completed" ? "green" : "brand"}>
           {JOB_STATUS_LABELS[job.status]}
         </Badge>
+      </div>
+
+      <div className="mt-6">
+        <EditJobForm job={job} staff={staff} />
       </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-3">
@@ -136,7 +150,7 @@ export default async function JobDetailPage({
                 A work ID is generated automatically ({job.jobCode}-Wxx).
               </p>
               <div className="mt-3">
-                <AddTaskForm jobId={job.id} />
+                <AddTaskForm jobId={job.id} staff={staff} />
               </div>
             </div>
           </Card>

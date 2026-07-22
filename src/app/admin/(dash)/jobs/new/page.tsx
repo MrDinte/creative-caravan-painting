@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { NewJobForm } from "@/components/NewJobForm";
-import { nextJobCode } from "@/lib/db";
+import { listStaff, nextJobCode } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "New Job",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default async function NewJobPage() {
-  const jobCode = await nextJobCode();
+  const [jobCode, staff] = await Promise.all([nextJobCode(), listStaff(true)]);
 
   return (
     <div className="max-w-2xl">
@@ -33,7 +33,7 @@ export default async function NewJobPage() {
       </p>
 
       <div className="mt-6">
-        <NewJobForm />
+        <NewJobForm staff={staff} />
       </div>
     </div>
   );

@@ -3,10 +3,17 @@
 import { useActionState, useEffect, useRef } from "react";
 import { Button, inputClass } from "./ui";
 import { createTaskAction, type FormState } from "@/app/actions";
+import type { Staff } from "@/lib/types";
 
 const initialState: FormState = { ok: false, message: "" };
 
-export function AddTaskForm({ jobId }: { jobId: string }) {
+export function AddTaskForm({
+  jobId,
+  staff = [],
+}: {
+  jobId: string;
+  staff?: Staff[];
+}) {
   const [state, formAction, pending] = useActionState(
     createTaskAction,
     initialState
@@ -38,11 +45,14 @@ export function AddTaskForm({ jobId }: { jobId: string }) {
         </label>
         <label className="block">
           <span className="sr-only">Assignee</span>
-          <input
-            name="assignee"
-            className={inputClass}
-            placeholder="Assign to…"
-          />
+          <select name="assignee" className={inputClass} defaultValue="">
+            <option value="">Assign to…</option>
+            {staff.map((s) => (
+              <option key={s.id} value={s.name}>
+                {s.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
 

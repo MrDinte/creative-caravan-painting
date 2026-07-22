@@ -7,8 +7,16 @@ import type {
   PriceBookItem,
   Product,
   Quote,
+  Staff,
   Task,
 } from "./types";
+
+// Seeded staff. Names match the assignees on the seeded tasks.
+export const demoStaff: Staff[] = [
+  { id: "s1", name: "Tim", role: "Owner / Spray Painter", active: true, createdAt: "2026-01-05T00:00:00.000Z" },
+  { id: "s2", name: "Jake", role: "Panel & Prep", active: true, createdAt: "2026-01-05T00:00:00.000Z" },
+  { id: "s3", name: "Mel", role: "Interiors & Upholstery", active: true, createdAt: "2026-03-02T00:00:00.000Z" },
+];
 
 // Demo dataset used when no DATABASE_URL is configured, so the site works
 // end-to-end as a live demo. Swap to Neon by setting DATABASE_URL (see db/schema.sql).
@@ -25,6 +33,8 @@ export const demoJobs: Job[] = [
     accessCode: "VAN123",
     scheduledStart: "2026-07-13",
     scheduledEnd: "2026-07-24",
+    assignedTo: "s1",
+    location: "workshop",
     notes: "Customer chose 2 pac teal over white, new decals supplied.",
     createdAt: "2026-07-01T09:00:00.000Z",
   },
@@ -39,6 +49,8 @@ export const demoJobs: Job[] = [
     accessCode: "VAN456",
     scheduledStart: "2026-07-20",
     scheduledEnd: "2026-07-28",
+    assignedTo: "s1",
+    location: "workshop",
     notes: "Curved perspex on order. Winder and lock repairs included.",
     createdAt: "2026-07-05T09:00:00.000Z",
   },
@@ -53,6 +65,8 @@ export const demoJobs: Job[] = [
     accessCode: "VAN789",
     scheduledStart: "2026-08-03",
     scheduledEnd: "2026-08-21",
+    assignedTo: "s2",
+    location: "bellmere",
     notes: "Full resto: decal removal, rust repair, mustard/cream scheme.",
     createdAt: "2026-07-10T09:00:00.000Z",
   },
@@ -67,6 +81,8 @@ export const demoJobs: Job[] = [
     accessCode: "VAN321",
     scheduledStart: "2026-06-29",
     scheduledEnd: "2026-07-22",
+    assignedTo: "s2",
+    location: "workshop",
     notes: "Globalcote roof reseal, vinyl flooring, gas lift bed install.",
     createdAt: "2026-06-15T09:00:00.000Z",
   },

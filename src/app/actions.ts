@@ -8,13 +8,18 @@ import {
   addUpdate,
   createJob,
   createQuote,
+  createStaff,
   createTask,
+  deactivateStaff,
   deletePriceBookItem,
   findJobByCredentials,
   findPriceBookItemByCode,
+  getQuote,
   nextJobCode,
+  updateJob,
   updateJobStatus,
   updateQuoteStatus,
+  updateStaff,
   updateTaskStatus,
   upsertPriceBookItem,
 } from "@/lib/db";
@@ -26,7 +31,20 @@ import {
   getAdminSession,
   verifyAdminCredentials,
 } from "@/lib/auth";
-import type { JobStatus, QuoteStatus, TaskStatus } from "@/lib/types";
+import type {
+  JobLocation,
+  JobStatus,
+  QuoteStatus,
+  TaskStatus,
+} from "@/lib/types";
+import { JOB_LOCATIONS } from "@/lib/types";
+
+function parseLocation(v: FormDataEntryValue | null): JobLocation {
+  const s = String(v ?? "");
+  return (JOB_LOCATIONS as string[]).includes(s)
+    ? (s as JobLocation)
+    : "workshop";
+}
 
 export interface FormState {
   ok: boolean;
@@ -199,6 +217,8 @@ export async function createJobAction(
     accessCode,
     scheduledStart,
     scheduledEnd,
+    assignedTo: String(formData.get("assignedTo") ?? ""),
+    location: parseLocation(formData.get("location")),
     notes,
   });
 
@@ -209,6 +229,94 @@ export async function createJobAction(
     ok: true,
     message: `Job ${jobCode} created. Customer access code: ${accessCode}`,
   };
+}
+
+export async function updateJobAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+
+  const id = String(formData.get("jobId"));
+  const title = String(formData.get("title") ?? "").trim();
+  const customerName = String(formData.get("customerName") ?? "").trim();
+  const scheduledStart = String(formData.get("scheduledStart") ?? "");
+  const scheduledEnd = String(formData.get("scheduledEnd") ?? "");
+
+  if (!title || !customerName || !scheduledStart || !scheduledEnd) {
+    return {
+      ok: false,
+      message: "Title, customer name and both dates are required.",
+    };
+  }
+  if (scheduledEnd < scheduledStart) {
+    return { ok: false, message: "End date must be on or after the start date." };
+  }
+
+  const updated = await updateJob(id, {
+    title,
+    customerName,
+    customerEmail: String(formData.get("customerEmail") ?? "").trim(),
+    vanMakeModel: String(formData.get("vanMakeModel") ?? "").trim(),
+    scheduledStart,
+    scheduledEnd,
+    assignedTo: String(formData.get("assignedTo") ?? ""),
+    location: parseLocation(formData.get("location")),
+    notes: String(formData.get("notes") ?? "").trim(),
+  });
+  if (!updated) return { ok: false, message: "That job no longer exists." };
+
+  revalidatePath(`/admin/jobs/${id}`);
+  revalidatePath("/admin/jobs");
+  revalidatePath("/admin/calendar");
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/portal/job");
+  return { ok: true, message: "Job updated." };
+}
+
+// ---------- Admin: staff ----------
+
+export async function createStaffAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+  const name = String(formData.get("name") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+
+  if (!name) return { ok: false, message: "Enter a name." };
+
+  await createStaff(name, role);
+  revalidatePath("/admin/staff");
+  revalidatePath("/admin/jobs");
+  return { ok: true, message: `${name} added to the team.` };
+}
+
+export async function updateStaffAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireAdmin();
+  const id = String(formData.get("id"));
+  const name = String(formData.get("name") ?? "").trim();
+  const role = String(formData.get("role") ?? "").trim();
+  const active = formData.get("active") === "on";
+
+  if (!name) return { ok: false, message: "Enter a name." };
+
+  const updated = await updateStaff(id, { name, role, active });
+  if (!updated) return { ok: false, message: "That person no longer exists." };
+
+  revalidatePath("/admin/staff");
+  revalidatePath("/admin/jobs");
+  return { ok: true, message: `Saved ${name}.` };
+}
+
+export async function deactivateStaffAction(formData: FormData) {
+  await requireAdmin();
+  await deactivateStaff(String(formData.get("id")));
+  revalidatePath("/admin/staff");
+  revalidatePath("/admin/jobs");
 }
 
 export async function setJobStatusAction(formData: FormData) {
@@ -388,35 +496,55 @@ export async function setQuoteStatusAction(formData: FormData) {
   revalidatePath(`/admin/quotes/${id}`);
 }
 
-// Turn an accepted quote into a scheduled job.
-export async function convertQuoteToJobAction(formData: FormData) {
+// Turn an accepted quote into a scheduled job. Dates, staff and location are
+// chosen at conversion time rather than defaulted, so nothing needs correcting
+// afterwards.
+export async function convertQuoteToJobAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
   await requireAdmin();
+
   const quoteId = String(formData.get("quoteId"));
-  const customerName = String(formData.get("customerName"));
-  const customerEmail = String(formData.get("customerEmail"));
-  const vanMakeModel = String(formData.get("vanMakeModel"));
-  const title = String(formData.get("title"));
+  const title = String(formData.get("title") ?? "").trim();
+  const customerName = String(formData.get("customerName") ?? "").trim();
+  const scheduledStart = String(formData.get("scheduledStart") ?? "");
+  const scheduledEnd = String(formData.get("scheduledEnd") ?? "");
+
+  if (!title || !customerName || !scheduledStart || !scheduledEnd) {
+    return {
+      ok: false,
+      message: "Job title, customer name and both dates are required.",
+    };
+  }
+  if (scheduledEnd < scheduledStart) {
+    return { ok: false, message: "End date must be on or after the start date." };
+  }
+
+  const quote = await getQuote(quoteId);
+  if (!quote) return { ok: false, message: "That quote no longer exists." };
 
   const jobCode = await nextJobCode();
   const accessCode = `VAN${Math.floor(100 + Math.random() * 900)}`;
-  const start = new Date().toISOString().slice(0, 10);
-  const end = new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 
   const job = await createJob({
     jobCode,
     title,
     customerName,
-    customerEmail,
-    vanMakeModel,
+    customerEmail: String(formData.get("customerEmail") ?? "").trim(),
+    vanMakeModel: String(formData.get("vanMakeModel") ?? "").trim(),
     status: "booked",
     accessCode,
-    scheduledStart: start,
-    scheduledEnd: end,
-    notes: `Created from quote ${quoteId}.`,
+    scheduledStart,
+    scheduledEnd,
+    assignedTo: String(formData.get("assignedTo") ?? ""),
+    location: parseLocation(formData.get("location")),
+    notes: `Created from quote ${quote.quoteNumber}.`,
   });
 
   await updateQuoteStatus(quoteId, "accepted");
   revalidatePath("/admin/quotes");
   revalidatePath("/admin/jobs");
+  revalidatePath("/admin/calendar");
   redirect(`/admin/jobs/${job.id}`);
 }
