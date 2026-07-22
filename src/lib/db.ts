@@ -85,20 +85,34 @@ function sql(): SqlTag {
   return _sql;
 }
 
+// The Postgres driver hydrates `date` and `timestamptz` columns into JS Date
+// objects. Calling String() on those yields a locale string ("Mon Jul 13 2026
+// …"), which breaks the calendar's date-string comparisons and renders badly.
+// Normalise to the same ISO shapes the demo dataset uses.
+function toDateStr(v: unknown): string {
+  if (v instanceof Date) return v.toISOString().slice(0, 10);
+  return String(v ?? "").slice(0, 10);
+}
+
+function toIsoStr(v: unknown): string {
+  if (v instanceof Date) return v.toISOString();
+  return String(v ?? "");
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const jobFromRow = (r: any): Job => ({
   id: r.id,
   jobCode: r.job_code,
   title: r.title,
   customerName: r.customer_name,
-  customerEmail: r.customer_email,
-  vanMakeModel: r.van_make_model,
+  customerEmail: r.customer_email ?? "",
+  vanMakeModel: r.van_make_model ?? "",
   status: r.status,
   accessCode: r.access_code,
-  scheduledStart: String(r.scheduled_start),
-  scheduledEnd: String(r.scheduled_end),
+  scheduledStart: toDateStr(r.scheduled_start),
+  scheduledEnd: toDateStr(r.scheduled_end),
   notes: r.notes ?? "",
-  createdAt: String(r.created_at),
+  createdAt: toIsoStr(r.created_at),
 });
 
 const taskFromRow = (r: any): Task => ({
@@ -108,7 +122,7 @@ const taskFromRow = (r: any): Task => ({
   title: r.title,
   assignee: r.assignee ?? "",
   status: r.status,
-  createdAt: String(r.created_at),
+  createdAt: toIsoStr(r.created_at),
 });
 
 const updateFromRow = (r: any): JobUpdate => ({
@@ -117,7 +131,7 @@ const updateFromRow = (r: any): JobUpdate => ({
   author: r.author,
   message: r.message,
   visibleToCustomer: r.visible_to_customer,
-  createdAt: String(r.created_at),
+  createdAt: toIsoStr(r.created_at),
 });
 
 const priceFromRow = (r: any): PriceBookItem => ({
@@ -138,8 +152,8 @@ const quoteFromRow = (r: any, lines: QuoteLine[]): Quote => ({
   vanMakeModel: r.van_make_model ?? "",
   status: r.status,
   notes: r.notes ?? "",
-  validUntil: String(r.valid_until),
-  createdAt: String(r.created_at),
+  validUntil: toDateStr(r.valid_until),
+  createdAt: toIsoStr(r.created_at),
   lines,
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -380,7 +394,7 @@ export async function listContacts(): Promise<ContactSubmission[]> {
       phone: r.phone ?? "",
       service: r.service ?? "",
       message: r.message,
-      createdAt: String(r.created_at),
+      createdAt: toIsoStr(r.created_at),
     }));
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
@@ -421,7 +435,7 @@ export async function listOrders(): Promise<OrderEnquiry[]> {
       items: typeof r.items === "string" ? JSON.parse(r.items) : r.items,
       totalCents: Number(r.total_cents),
       status: r.status,
-      createdAt: String(r.created_at),
+      createdAt: toIsoStr(r.created_at),
     }));
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
