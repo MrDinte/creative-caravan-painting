@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { writesData } from "./helpers";
+import { seededFixtures, writesData } from "./helpers";
 
 async function login(page: Page) {
   await page.goto("/admin");
@@ -13,6 +13,7 @@ test.describe("Staff management", () => {
   test.beforeEach(async ({ page }) => login(page));
 
   test("lists the seeded team", async ({ page }) => {
+    seededFixtures();
     await page.goto("/admin/staff");
     await expect(page.locator("h1")).toContainText("Staff");
     await expect(page.getByTestId("staff-row-Tim")).toBeVisible();
@@ -43,6 +44,7 @@ test.describe("Staff management", () => {
   });
 
   test("edits a team member", async ({ page }) => {
+    seededFixtures();
     await page.goto("/admin/staff");
     await page.getByTestId("edit-staff-Mel").click();
     await expect(
@@ -57,6 +59,7 @@ test.describe("Staff management", () => {
   });
 
   test("staff appear in the job allocation dropdown", async ({ page }) => {
+    seededFixtures();
     await page.goto("/admin/jobs/new");
     const select = page.getByLabel("Allocated to");
     await expect(select).toBeVisible();

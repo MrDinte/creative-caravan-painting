@@ -1,9 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Badge, ButtonLink, Card } from "@/components/ui";
-import { listContacts, listJobs, listOrders, listQuotes, listTasks } from "@/lib/db";
+import { redirect } from "next/navigation";
+import { ClockCard } from "@/components/ClockCard";
+import { getAdminSession } from "@/lib/auth";
 import {
+  getOpenShift,
+  getStaff,
+  listContacts,
+  listJobs,
+  listOrders,
+  listQuotes,
+  listTasks,
+} from "@/lib/db";
+import {
+  JOB_LOCATIONS,
+  JOB_LOCATION_LABELS,
   JOB_STATUS_LABELS,
+  type JobLocation,
   formatAud,
   gstCents,
   quoteSubtotalCents,
@@ -14,16 +28,54 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function DashboardPage() {
-  const [jobs, tasks, quotes, contacts, orders] = await Promise.all([
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ loc?: string }>;
+}) {
+  const { loc } = await searchParams;
+  const session = await getAdminSession();
+  if (!session) redirect("/admin");
+
+  const isAdmin = session.accessLevel === "admin";
+
+  const [jobs, tasks, quotes, contacts, orders, shift, me] = await Promise.all([
     listJobs(),
     listTasks(),
-    listQuotes(),
-    listContacts(),
-    listOrders(),
+    // Quotes, enquiries and orders are owner-only, so don't fetch them for
+    // staff — with RLS on, those reads return nothing anyway.
+    isAdmin ? listQuotes() : Promise.resolve([]),
+    isAdmin ? listContacts() : Promise.resolve([]),
+    isAdmin ? listOrders() : Promise.resolve([]),
+    getOpenShift(session.staffId),
+    session.staffId ? getStaff(session.staffId) : Promise.resolve(null),
   ]);
 
-  const active = jobs.filter((j) => j.status !== "completed");
+  const activeFilter = (JOB_LOCATIONS as string[]).includes(loc ?? "")
+    ? (loc as JobLocation)
+    : null;
+
+  const active = jobs
+    .filter((j) => j.status !== "completed")
+    .filter((j) => !activeFilter || j.location === activeFilter);
+
+  const activeAllLocations = jobs.filter((j) => j.status !== "completed");
+  const countFor = (l: JobLocation) =>
+    activeAllLocations.filter((j) => j.location === l).length;
+
+  const locationTabs = [
+    {
+      key: null,
+      label: `All (${activeAllLocations.length})`,
+      href: "/admin/dashboard",
+    },
+    ...JOB_LOCATIONS.map((l) => ({
+      key: l,
+      label: `${JOB_LOCATION_LABELS[l]} (${countFor(l)})`,
+      href: `/admin/dashboard?loc=${l}`,
+    })),
+  ];
+
   const openTasks = tasks.filter((t) => t.status !== "done");
   const openQuotes = quotes.filter(
     (q) => q.status === "draft" || q.status === "sent"
@@ -36,8 +88,13 @@ export default async function DashboardPage() {
   const stats = [
     { label: "Active jobs", value: String(active.length), href: "/admin/jobs" },
     { label: "Open tasks", value: String(openTasks.length), href: "/admin/tasks" },
-    { label: "Open quotes", value: String(openQuotes.length), href: "/admin/quotes" },
-    { label: "Quote pipeline", value: formatAud(pipelineCents), href: "/admin/quotes" },
+    // Quote figures are commercial information — owners only.
+    ...(isAdmin
+      ? [
+          { label: "Open quotes", value: String(openQuotes.length), href: "/admin/quotes" },
+          { label: "Quote pipeline", value: formatAud(pipelineCents), href: "/admin/quotes" },
+        ]
+      : [{ label: "My timesheets", value: "View", href: "/admin/timesheets" }]),
   ];
 
   return (
@@ -51,19 +108,34 @@ export default async function DashboardPage() {
             What&apos;s happening in the workshop today.
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <ButtonLink href="/admin/jobs/new" className="!min-h-[44px] !py-2">
-            + New job
-          </ButtonLink>
-          <ButtonLink
-            href="/admin/quotes/new"
-            variant="outline"
-            className="!min-h-[44px] !py-2"
-          >
-            + New quote
-          </ButtonLink>
-        </div>
+        {isAdmin && (
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href="/admin/jobs/new" className="!min-h-[44px] !py-2">
+              + New job
+            </ButtonLink>
+            <ButtonLink
+              href="/admin/quotes/new"
+              variant="outline"
+              className="!min-h-[44px] !py-2"
+            >
+              + New quote
+            </ButtonLink>
+          </div>
+        )}
       </div>
+
+      {/* First thing on the page: are you on the clock or not. */}
+      {session.staffId && (
+        <div className="mt-6">
+          <ClockCard
+            name={session.name}
+            openShiftStartedAt={shift?.startedAt ?? null}
+            openShiftJobId={shift?.jobId ?? ""}
+            jobs={jobs.filter((j) => j.status !== "completed")}
+            defaultBreakMinutes={me?.defaultBreakMinutes ?? 30}
+          />
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -82,7 +154,9 @@ export default async function DashboardPage() {
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl font-bold text-slate-900">
-              Jobs in the workshop
+              {activeFilter
+                ? `Jobs in ${JOB_LOCATION_LABELS[activeFilter]}`
+                : "Jobs in progress"}
             </h2>
             <Link
               href="/admin/jobs"
@@ -91,9 +165,38 @@ export default async function DashboardPage() {
               View all
             </Link>
           </div>
+
+          <nav
+            aria-label="Filter by location"
+            className="mt-3 flex flex-wrap gap-2"
+          >
+            {locationTabs.map((t) => {
+              const isActive = activeFilter === t.key;
+              return (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`inline-flex min-h-[36px] items-center rounded-full px-3 text-xs font-semibold transition-colors ${
+                    isActive
+                      ? "bg-brand text-white"
+                      : "border border-slate-300 bg-white text-slate-700 hover:border-brand hover:text-brand"
+                  }`}
+                  data-testid={`dash-loc-${t.key ?? "all"}`}
+                >
+                  {t.label}
+                </Link>
+              );
+            })}
+          </nav>
+
           <ul className="mt-4 divide-y divide-slate-200">
             {active.length === 0 && (
-              <li className="py-4 text-slate-600">No active jobs right now.</li>
+              <li className="py-4 text-slate-600">
+                {activeFilter
+                  ? `No active jobs at ${JOB_LOCATION_LABELS[activeFilter]}.`
+                  : "No active jobs right now."}
+              </li>
             )}
             {active.map((j) => (
               <li key={j.id} className="py-3">
@@ -107,7 +210,7 @@ export default async function DashboardPage() {
                     </span>
                     <span className="block font-semibold">{j.title}</span>
                     <span className="text-sm text-slate-500">
-                      {j.customerName} · {j.vanMakeModel}
+                      {j.customerName} · {j.vanMakeModel} · {JOB_LOCATION_LABELS[j.location]}
                     </span>
                   </span>
                   <Badge
@@ -121,6 +224,7 @@ export default async function DashboardPage() {
           </ul>
         </Card>
 
+        {isAdmin && (
         <div className="space-y-6">
           <Card className="p-6">
             <div className="flex items-center justify-between">
@@ -178,6 +282,7 @@ export default async function DashboardPage() {
             </ul>
           </Card>
         </div>
+        )}
       </div>
     </div>
   );

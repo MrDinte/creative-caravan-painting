@@ -33,6 +33,7 @@ import type {
   TaskStatus,
 } from "./types";
 import { PAYROLL_DEFAULTS } from "./types";
+import { getAdminSession, getCustomerSession } from "./session";
 
 // Data layer with two backends:
 //  - Demo mode (default): seeded in-memory store so the deployed demo works with zero setup.
@@ -55,6 +56,7 @@ interface MemoryStore {
   staff: Staff[];
   timesheets: TimesheetEntry[];
   staffPasswords: Record<string, string>;
+  openShifts: Record<string, OpenShift>;
 }
 
 const globalStore = globalThis as unknown as { __ccpStore?: MemoryStore };
@@ -74,6 +76,7 @@ function mem(): MemoryStore {
       staff: structuredClone(demoStaff),
       timesheets: structuredClone(demoTimesheets),
       staffPasswords: { ...demoStaffPasswords },
+      openShifts: {},
     };
   }
   return globalStore.__ccpStore;
@@ -93,10 +96,79 @@ type SqlTag = (
 ) => Promise<Row[]>;
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-let _sql: SqlTag | null = null;
-function sql(): SqlTag {
-  if (!_sql) _sql = neon(process.env.DATABASE_URL!) as unknown as SqlTag;
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type RawSql = SqlTag & {
+  transaction: (queries: unknown[]) => Promise<any[]>;
+};
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+let _sql: RawSql | null = null;
+function raw(): RawSql {
+  if (!_sql) _sql = neon(process.env.DATABASE_URL!) as unknown as RawSql;
   return _sql;
+}
+
+/**
+ * Every query runs in a transaction that first declares who is asking, so the
+ * row-level security policies in db/schema.sql can scope it.
+ *
+ * The HTTP driver is stateless — each request is its own connection — so the
+ * settings must be transaction-local (`set_config(..., true)`) and issued
+ * alongside the query rather than once per session.
+ *
+ * Context is derived from the session cookies, so callers can't forget to set
+ * it. With no session the role is "anon", which the policies grant almost
+ * nothing: this fails closed rather than open.
+ */
+async function dbContext(): Promise<{
+  role: "admin" | "staff" | "customer" | "anon";
+  staffId: string;
+  jobId: string;
+}> {
+  const admin = await getAdminSession();
+  if (admin) {
+    return {
+      role: admin.accessLevel === "admin" ? "admin" : "staff",
+      staffId: admin.staffId,
+      jobId: "",
+    };
+  }
+  const customer = await getCustomerSession();
+  if (customer) {
+    return { role: "customer", staffId: "", jobId: customer.jobId };
+  }
+  return { role: "anon", staffId: "", jobId: "" };
+}
+
+function sql(): SqlTag {
+  const r = raw();
+  return async (strings, ...values) => {
+    const ctx = await dbContext();
+    const results = await r.transaction([
+      r`select set_config('app.role', ${ctx.role}, true),
+               set_config('app.staff_id', ${ctx.staffId}, true),
+               set_config('app.job_id', ${ctx.jobId}, true)`,
+      r(strings, ...values),
+    ]);
+    return results[1];
+  };
+}
+
+/**
+ * Runs a query with an explicit role, for the few operations that happen
+ * before a session exists — logging in, and the public contact/order forms.
+ */
+function sqlAs(role: "admin" | "anon"): SqlTag {
+  const r = raw();
+  return async (strings, ...values) => {
+    const results = await r.transaction([
+      r`select set_config('app.role', ${role}, true),
+               set_config('app.staff_id', '', true),
+               set_config('app.job_id', '', true)`,
+      r(strings, ...values),
+    ]);
+    return results[1];
+  };
 }
 
 // The Postgres driver hydrates `date` and `timestamptz` columns into JS Date
@@ -246,7 +318,8 @@ export async function findJobByCredentials(
   accessCode: string
 ): Promise<Job | null> {
   if (hasDatabase()) {
-    const rows = await sql()`
+    // The portal login itself runs before a customer session exists.
+    const rows = await sqlAs("admin")`
       select * from jobs
       where upper(job_code) = upper(${jobCode})
         and upper(access_code) = upper(${accessCode})`;
@@ -411,8 +484,9 @@ export async function findStaffByUsername(
   if (!uname) return null;
 
   if (hasDatabase()) {
+    // Runs before a session exists, so the role is stated explicitly.
     const rows =
-      await sql()`select * from staff where lower(username) = ${uname}`;
+      await sqlAs("admin")`select * from staff where lower(username) = ${uname}`;
     const row = rows[0];
     if (!row?.password_hash) return null;
     return { staff: staffFromRow(row), passwordHash: row.password_hash };
@@ -571,6 +645,63 @@ export async function createTimesheetEntry(
   }
   mem().timesheets.push(entry);
   return entry;
+}
+
+// ---------- Clock on / off ----------
+
+export interface OpenShift {
+  staffId: string;
+  startedAt: string;
+  jobId: string;
+}
+
+export async function getOpenShift(
+  staffId: string
+): Promise<OpenShift | null> {
+  if (!staffId) return null;
+  if (hasDatabase()) {
+    const rows =
+      await sql()`select * from open_shifts where staff_id = ${staffId}`;
+    const r = rows[0];
+    return r
+      ? {
+          staffId: r.staff_id,
+          startedAt: toIsoStr(r.started_at),
+          jobId: r.job_id ?? "",
+        }
+      : null;
+  }
+  return mem().openShifts[staffId] ?? null;
+}
+
+export async function startShift(
+  staffId: string,
+  jobId: string
+): Promise<OpenShift> {
+  const shift: OpenShift = {
+    staffId,
+    startedAt: new Date().toISOString(),
+    jobId,
+  };
+  if (hasDatabase()) {
+    // One open shift per person — clocking on twice just re-stamps the start.
+    await sql()`
+      insert into open_shifts (staff_id, started_at, job_id)
+      values (${staffId}, ${shift.startedAt}, ${jobId || null})
+      on conflict (staff_id) do update
+        set started_at = excluded.started_at, job_id = excluded.job_id`;
+    return shift;
+  }
+  mem().openShifts[staffId] = shift;
+  return shift;
+}
+
+export async function clearShift(staffId: string): Promise<void> {
+  if (hasDatabase()) {
+    await sql()`delete from open_shifts where staff_id = ${staffId}`;
+    return;
+  }
+  delete mem().openShifts[staffId];
 }
 
 export async function deleteTimesheetEntry(
@@ -751,7 +882,7 @@ export async function addContact(
     createdAt: new Date().toISOString(),
   };
   if (hasDatabase()) {
-    await sql()`
+    await sqlAs("anon")`
       insert into contact_submissions (id, name, email, phone, service, message, created_at)
       values (${c.id}, ${c.name}, ${c.email}, ${c.phone}, ${c.service}, ${c.message}, ${c.createdAt})`;
     return c;
@@ -791,7 +922,7 @@ export async function addOrderEnquiry(
     createdAt: new Date().toISOString(),
   };
   if (hasDatabase()) {
-    await sql()`
+    await sqlAs("anon")`
       insert into order_enquiries (id, customer_name, customer_email, items, total_cents, status, created_at)
       values (${o.id}, ${o.customerName}, ${o.customerEmail}, ${JSON.stringify(o.items)},
               ${o.totalCents}, ${o.status}, ${o.createdAt})`;

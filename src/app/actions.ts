@@ -11,11 +11,13 @@ import {
   createStaff,
   createTask,
   createTimesheetEntry,
+  clearShift,
   deactivateStaff,
   deleteTimesheetEntry,
   deletePriceBookItem,
   findJobByCredentials,
   findPriceBookItemByCode,
+  getOpenShift,
   getQuote,
   getStaff,
   isUsernameTaken,
@@ -23,6 +25,7 @@ import {
   removeStaffLogin,
   setStaffLogin,
   setStaffPayroll,
+  startShift,
   updateJob,
   updateJobStatus,
   updateQuoteStatus,
@@ -39,6 +42,7 @@ import {
   authenticate,
 } from "@/lib/auth";
 import { hashPassword, passwordProblem } from "@/lib/password";
+import { brisbaneDate, brisbaneTime, hoursBetween } from "@/lib/brisbane";
 import type {
   AccessLevel,
   JobLocation,
@@ -465,6 +469,86 @@ export async function addTimesheetEntryAction(
 
   revalidatePath("/admin/timesheets");
   return { ok: true, message: `Logged ${hours} h on ${workDate}.` };
+}
+
+// ---------- Clock on / off ----------
+
+export async function clockOnAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireAdmin();
+  if (!session.staffId) {
+    return {
+      ok: false,
+      message:
+        "This login isn't linked to a staff record, so it can't clock on. Sign in as a staff member.",
+    };
+  }
+
+  const existing = await getOpenShift(session.staffId);
+  if (existing) {
+    return { ok: false, message: "You're already clocked on." };
+  }
+
+  await startShift(session.staffId, String(formData.get("jobId") ?? ""));
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/timesheets");
+  return { ok: true, message: `Clocked on at ${brisbaneTime()} Brisbane time.` };
+}
+
+export async function clockOffAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireAdmin();
+  if (!session.staffId) {
+    return { ok: false, message: "This login isn't linked to a staff record." };
+  }
+
+  const shift = await getOpenShift(session.staffId);
+  if (!shift) return { ok: false, message: "You're not clocked on." };
+
+  const endedAt = new Date().toISOString();
+  const hours = hoursBetween(shift.startedAt, endedAt);
+
+  if (hours <= 0) {
+    // Under 7½ minutes rounds to zero, and the hours column must be positive.
+    await clearShift(session.staffId);
+    return {
+      ok: true,
+      message: "Clocked off — under 15 minutes, so nothing was recorded.",
+    };
+  }
+
+  const member = await getStaff(session.staffId);
+  const breakMinutes = Number(
+    formData.get("breakMinutes") ?? member?.defaultBreakMinutes ?? 30
+  );
+  // Never let the break exceed the shift, which the hours check would reject.
+  const safeBreak = Math.max(
+    0,
+    Math.min(Math.round(breakMinutes), Math.floor(hours * 60) - 1)
+  );
+
+  await createTimesheetEntry({
+    staffId: session.staffId,
+    jobId: shift.jobId,
+    // Date the shift by when it started, in Brisbane — a shift beginning at
+    // 5pm shouldn't land on the next day just because UTC has ticked over.
+    workDate: brisbaneDate(new Date(shift.startedAt)),
+    hours,
+    breakMinutes: safeBreak,
+    notes: String(formData.get("notes") ?? "").trim() || "Clocked shift",
+  });
+
+  await clearShift(session.staffId);
+  revalidatePath("/admin/dashboard");
+  revalidatePath("/admin/timesheets");
+  return {
+    ok: true,
+    message: `Clocked off at ${brisbaneTime()} — ${hours} h recorded, ${safeBreak} min unpaid break.`,
+  };
 }
 
 export async function deleteTimesheetEntryAction(formData: FormData) {
