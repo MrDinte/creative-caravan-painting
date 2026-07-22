@@ -14,3 +14,14 @@ export const writesData = () =>
     Boolean(process.env.BASE_URL) && process.env.ALLOW_WRITE_TESTS !== "1",
     "Creates rows with no cleanup path — skipped against a deployed database. Set ALLOW_WRITE_TESTS=1 to include."
   );
+
+/**
+ * Asserts against the seeded demo dataset — specific people, hours and totals.
+ * A real database holds whatever the business has actually entered, so these
+ * only run locally where the in-memory fixtures are guaranteed.
+ */
+export const seededFixtures = () =>
+  test.skip(
+    Boolean(process.env.BASE_URL),
+    "Depends on the seeded demo dataset — skipped against a real database."
+  );

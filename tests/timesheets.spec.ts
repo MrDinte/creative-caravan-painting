@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { writesData } from "./helpers";
+import { seededFixtures, writesData } from "./helpers";
 
 async function loginAs(
   page: Page,
@@ -26,6 +26,7 @@ test.describe("Per-staff logins", () => {
   test("a staff member can sign in with their own credentials", async ({
     page,
   }) => {
+    seededFixtures();
     await loginAs(page, "jake", "workshop2026");
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
     await expect(page.getByText(/Signed in as/)).toContainText("Jake");
@@ -37,6 +38,7 @@ test.describe("Per-staff logins", () => {
   });
 
   test("a wrong password is rejected", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "jake", "not-the-password", { expectSuccess: false });
     await expect(page.getByTestId("admin-login-error")).toContainText(
       /Incorrect/i
@@ -44,6 +46,7 @@ test.describe("Per-staff logins", () => {
   });
 
   test("staff cannot reach admin-only sections by URL", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "jake", "workshop2026");
     await expect(page).toHaveURL(/\/admin\/dashboard$/);
 
@@ -66,6 +69,7 @@ test.describe("Per-staff logins", () => {
   });
 
   test("staff navigation hides admin-only links", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "jake", "workshop2026");
     const nav = page.getByRole("navigation", { name: "Admin" });
 
@@ -78,6 +82,7 @@ test.describe("Per-staff logins", () => {
 
 test.describe("Timesheets and payroll", () => {
   test("admin sees weekly totals with overtime applied", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "admin", "caravan2026");
     await page.goto("/admin/timesheets");
 
@@ -96,6 +101,7 @@ test.describe("Timesheets and payroll", () => {
   });
 
   test("a staff member sees only their own hours", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "mel", "workshop2026");
     await page.goto("/admin/timesheets");
 
@@ -106,6 +112,7 @@ test.describe("Timesheets and payroll", () => {
   });
 
   test("staff form does not offer a person picker", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "mel", "workshop2026");
     await page.goto("/admin/timesheets");
     await expect(page.getByTestId("timesheet-form")).toBeVisible();
@@ -119,6 +126,7 @@ test.describe("Timesheets and payroll", () => {
   });
 
   test("rejects a break longer than the hours worked", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "mel", "workshop2026");
     await page.goto("/admin/timesheets");
 
@@ -132,6 +140,7 @@ test.describe("Timesheets and payroll", () => {
   });
 
   test("rejects hours outside 0–24", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "mel", "workshop2026");
     await page.goto("/admin/timesheets");
 
@@ -145,6 +154,7 @@ test.describe("Timesheets and payroll", () => {
   });
 
   test("logs hours and they appear in the list", async ({ page }) => {
+    seededFixtures();
     writesData();
     await loginAs(page, "mel", "workshop2026");
     await page.goto("/admin/timesheets");
@@ -162,6 +172,7 @@ test.describe("Timesheets and payroll", () => {
 
 test.describe("Staff pay settings", () => {
   test("admin can see pay rates on the staff page", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "admin", "caravan2026");
     await page.goto("/admin/staff");
 
@@ -170,6 +181,7 @@ test.describe("Staff pay settings", () => {
   });
 
   test("login and pay forms appear when editing someone", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "admin", "caravan2026");
     await page.goto("/admin/staff");
     await page.getByTestId("edit-staff-Mel").click();
@@ -179,6 +191,7 @@ test.describe("Staff pay settings", () => {
   });
 
   test("rejects a short password", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "admin", "caravan2026");
     await page.goto("/admin/staff");
     await page.getByTestId("edit-staff-Mel").click();
@@ -190,6 +203,7 @@ test.describe("Staff pay settings", () => {
   });
 
   test("rejects a username already in use", async ({ page }) => {
+    seededFixtures();
     await loginAs(page, "admin", "caravan2026");
     await page.goto("/admin/staff");
     await page.getByTestId("edit-staff-Mel").click();
