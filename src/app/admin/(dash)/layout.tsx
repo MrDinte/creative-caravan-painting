@@ -15,8 +15,8 @@ export default async function AdminDashLayout({
   if (!session) redirect("/admin");
 
   return (
-    <div className="flex min-h-screen flex-col bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
+    <div className="flex min-h-screen flex-col bg-surface">
+      <header className="sticky top-0 z-40 border-b border-slate-200/80 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
           <Link href="/admin/dashboard" className="flex items-center gap-2">
             <span

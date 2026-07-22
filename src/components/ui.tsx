@@ -49,14 +49,21 @@ export function SectionHeading({
 }
 
 const buttonBase =
-  "inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed";
+  "inline-flex min-h-[48px] items-center justify-center gap-2 rounded-full px-6 py-3 text-base font-semibold " +
+  "transition-all duration-150 active:scale-[0.98] " +
+  "disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100";
 
 const variants = {
-  primary: "bg-brand text-white hover:bg-brand-dark",
-  accent: "bg-accent text-slate-900 hover:brightness-95",
+  primary:
+    "bg-brand text-white shadow-[0_1px_2px_rgb(15_23_42_/_0.08),0_4px_12px_rgb(13_114_104_/_0.25)] " +
+    "hover:bg-brand-dark hover:shadow-[0_2px_4px_rgb(15_23_42_/_0.08),0_8px_20px_rgb(13_114_104_/_0.3)]",
+  accent:
+    "bg-accent text-slate-900 shadow-[0_1px_2px_rgb(15_23_42_/_0.08),0_4px_12px_rgb(245_165_36_/_0.3)] " +
+    "hover:brightness-[0.97] hover:shadow-[0_2px_4px_rgb(15_23_42_/_0.08),0_8px_20px_rgb(245_165_36_/_0.35)]",
   outline:
-    "border-2 border-slate-300 text-slate-800 hover:border-brand hover:text-brand bg-white",
-  ghost: "text-brand hover:bg-brand/10",
+    "border-2 border-slate-200 bg-white text-slate-800 shadow-[0_1px_2px_rgb(15_23_42_/_0.04)] " +
+    "hover:border-brand hover:text-brand hover:bg-brand-soft",
+  ghost: "text-brand hover:bg-brand-soft",
 } as const;
 
 export type ButtonVariant = keyof typeof variants;
@@ -122,7 +129,11 @@ export function Card({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}
+      className={
+        "rounded-[--radius-lg] border border-slate-200/80 bg-white " +
+        "shadow-[0_1px_2px_rgb(15_23_42_/_0.04),0_6px_16px_rgb(15_23_42_/_0.06)] " +
+        `${className}`
+      }
       {...props}
     >
       {children}
@@ -137,16 +148,17 @@ export function Badge({
   children: React.ReactNode;
   tone?: "brand" | "amber" | "slate" | "green" | "red";
 }) {
+  // Ring rather than a hard border: reads as a soft pill at small sizes.
   const tones = {
-    brand: "bg-brand/10 text-brand",
-    amber: "bg-amber-100 text-amber-800",
-    slate: "bg-slate-100 text-slate-700",
-    green: "bg-emerald-100 text-emerald-800",
-    red: "bg-rose-100 text-rose-800",
+    brand: "bg-brand-soft text-brand ring-brand/15",
+    amber: "bg-amber-50 text-amber-800 ring-amber-500/20",
+    slate: "bg-slate-100 text-slate-700 ring-slate-500/15",
+    green: "bg-emerald-50 text-emerald-800 ring-emerald-500/20",
+    red: "bg-rose-50 text-rose-800 ring-rose-500/20",
   };
   return (
     <span
-      className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${tones[tone]}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${tones[tone]}`}
     >
       {children}
     </span>
@@ -177,4 +189,7 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full min-h-[48px] rounded-xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 placeholder:text-slate-400 focus:border-brand focus:ring-2 focus:ring-brand/20 outline-none";
+  "w-full min-h-[48px] rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-base text-slate-900 " +
+  "shadow-[inset_0_1px_2px_rgb(15_23_42_/_0.04)] placeholder:text-slate-400 " +
+  "transition-colors hover:border-slate-300 " +
+  "focus:border-brand focus:bg-white focus:ring-4 focus:ring-brand/10 outline-none";

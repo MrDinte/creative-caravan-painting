@@ -162,11 +162,12 @@ test.describe("Timesheets and payroll", () => {
     await page.getByLabel("Date worked").fill("2026-07-20");
     await page.getByLabel("Hours on site").fill("7.5");
     await page.getByLabel("Unpaid break").fill("30");
-    await page.getByLabel("Notes").fill("Suite generated entry");
+    const note = `Suite entry ${Math.random().toString(36).slice(2, 8)}`;
+    await page.getByLabel("Notes").fill(note);
     await page.getByTestId("add-timesheet-submit").click();
 
     await expect(page.getByRole("status")).toContainText(/Logged 7.5 h/);
-    await expect(page.getByText("Suite generated entry")).toBeVisible();
+    await expect(page.getByText(note).first()).toBeVisible();
   });
 });
 

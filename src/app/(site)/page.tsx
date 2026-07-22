@@ -11,7 +11,7 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-teal-50 via-white to-white">
+      <section className="relative overflow-hidden bg-[radial-gradient(ellipse_at_top_left,var(--brand-soft),transparent_55%),radial-gradient(ellipse_at_top_right,var(--accent-soft),transparent_50%)]">
         <div className="mx-auto max-w-6xl px-4 py-16 sm:py-24">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <div className="animate-fade-up">
@@ -62,7 +62,7 @@ export default async function HomePage() {
             </div>
 
             <div className="animate-fade-up">
-              <div className="overflow-hidden rounded-3xl border border-slate-200 shadow-xl">
+              <div className="overflow-hidden rounded-3xl border border-slate-200/80 shadow-[0_8px_16px_rgb(15_23_42_/_0.06),0_24px_56px_rgb(15_23_42_/_0.12)]">
                 <VanArt
                   body="#ffffff"
                   stripe="#0f766e"

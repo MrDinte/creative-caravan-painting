@@ -139,8 +139,13 @@ export default async function DashboardPage({
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
-          <Link key={s.label} href={s.href} className="block">
-            <Card className="p-5 transition-shadow hover:shadow-md">
+          <Link key={s.label} href={s.href} className="group block">
+            <Card className="relative overflow-hidden p-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_4px_8px_rgb(15_23_42_/_0.05),0_12px_28px_rgb(15_23_42_/_0.1)]">
+              {/* Accent rail — gives the tiles a shared visual anchor. */}
+              <span
+                aria-hidden
+                className="absolute inset-y-0 left-0 w-1 bg-brand/70 transition-colors group-hover:bg-brand"
+              />
               <p className="text-sm text-slate-600">{s.label}</p>
               <p className="mt-1 font-display text-3xl font-bold text-brand">
                 {s.value}

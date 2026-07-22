@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { Button, Card, Field, inputClass } from "./ui";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { saveStockItemAction, type FormState } from "@/app/actions";
@@ -27,7 +27,9 @@ export function StockItemForm({
     saveStockItemAction,
     initialState
   );
-  const [barcode, setBarcode] = useState(item?.barcode ?? "");
+  // Uncontrolled: a controlled value can lag the form submission on mobile
+  // Safari and post empty. The scanner writes straight into the DOM node.
+  const barcodeRef = useRef<HTMLInputElement>(null);
   const [cost, setCost] = useState(
     item ? (item.costCents / 100).toFixed(2) : "0.00"
   );
@@ -113,12 +115,16 @@ export function StockItemForm({
           — our own CCP label works regardless.
         </p>
         <div className="mt-4 space-y-3">
-          <BarcodeScanner onScan={setBarcode} />
+          <BarcodeScanner
+            onScan={(value) => {
+              if (barcodeRef.current) barcodeRef.current.value = value;
+            }}
+          />
           <Field label="Barcode">
             <input
+              ref={barcodeRef}
               name="barcode"
-              value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
+              defaultValue={item?.barcode ?? ""}
               className={`${inputClass} font-mono`}
               placeholder="9310872001234"
               data-testid="stock-barcode-input"

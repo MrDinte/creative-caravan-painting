@@ -75,14 +75,24 @@ test.describe("Stock item", () => {
     await page.goto("/admin/stock");
     await page.getByRole("link", { name: "CCP-S-0003" }).click();
 
-    await expect(page.getByTestId("qty-on-hand")).toContainText("9");
+    // Read the current quantity rather than assuming the seeded figure: both
+    // browser projects share one server and this test books stock out.
+    const before = Number(
+      (await page.getByTestId("qty-on-hand").textContent())!.replace(
+        /[^\d.]/g,
+        ""
+      )
+    );
+    expect(before).toBeGreaterThanOrEqual(2);
 
     await page.getByTestId("direction-out").click();
     await page.getByTestId("adjust-qty").fill("2");
     await page.getByTestId("adjust-stock-submit").click();
 
     await expect(page.getByRole("status")).toContainText(/Removed 2 tin/);
-    await expect(page.getByRole("status")).toContainText(/7 now on hand/);
+    await expect(page.getByRole("status")).toContainText(
+      new RegExp(`${before - 2} now on hand`)
+    );
   });
 
   test("refuses to book out more than is on hand", async ({ page }) => {
@@ -162,7 +172,7 @@ test.describe("Adding stock", () => {
     seededFixtures();
     await page.goto("/admin/stock/new");
 
-    await page.getByLabel("Item name").fill("Duplicate barcode");
+    await page.getByLabel("Item name").fill(`Duplicate barcode ${Math.random().toString(36).slice(2, 8)}`);
     await page.getByTestId("stock-barcode-input").fill("9310872001234");
     await page.getByLabel(/Cost price/).fill("10");
     await page.getByLabel(/Sale price/).fill("20");
@@ -175,7 +185,8 @@ test.describe("Adding stock", () => {
     writesData();
     await page.goto("/admin/stock/new");
 
-    await page.getByLabel("Item name").fill(`Suite item ${Date.now() % 10000}`);
+    // Random, not time-based: both browser projects can run this same second.
+    await page.getByLabel("Item name").fill(`Suite item ${Math.random().toString(36).slice(2, 8)}`);
     await page.getByLabel(/Cost price/).fill("12.50");
     await page.getByLabel(/Sale price/).fill("25");
     await page.getByTestId("save-stock-submit").click();

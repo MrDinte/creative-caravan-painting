@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useRef } from "react";
 import { Button, inputClass } from "./ui";
 import { BarcodeScanner } from "./BarcodeScanner";
 import { lookupBarcodeAction, type FormState } from "@/app/actions";
@@ -12,19 +12,27 @@ export function BarcodeLookup() {
     lookupBarcodeAction,
     initialState
   );
-  const [code, setCode] = useState("");
+
+  // Uncontrolled on purpose. A controlled value can lag behind the form
+  // submission — observed on mobile Safari, where the action received an
+  // empty code. Keeping the value in the DOM means what's on screen is
+  // exactly what gets submitted. The scanner writes into it via the ref.
+  const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="space-y-3">
-      <BarcodeScanner onScan={setCode} />
+      <BarcodeScanner
+        onScan={(value) => {
+          if (inputRef.current) inputRef.current.value = value;
+        }}
+      />
 
       <form action={formAction} className="flex flex-wrap gap-2">
         <label className="min-w-[200px] flex-1">
           <span className="sr-only">Barcode or CCP code</span>
           <input
+            ref={inputRef}
             name="code"
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
             className={`${inputClass} font-mono`}
             placeholder="Scan, or type CCP-S-0001"
             data-testid="barcode-input"
