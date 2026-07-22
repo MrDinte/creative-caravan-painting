@@ -12,6 +12,21 @@ export const site = {
   instagramHandle: "@creative.caravan.painting",
 } as const;
 
+/**
+ * Bank details shown on invoices for direct transfer. Set these in the
+ * environment rather than committing real account numbers — the placeholders
+ * make it obvious when they haven't been configured.
+ */
+export const bankDetails = {
+  accountName: process.env.NEXT_PUBLIC_BANK_ACCOUNT_NAME ?? "Creative Caravan Painting",
+  bsb: process.env.NEXT_PUBLIC_BANK_BSB ?? "",
+  accountNumber: process.env.NEXT_PUBLIC_BANK_ACCOUNT ?? "",
+} as const;
+
+export function hasBankDetails(): boolean {
+  return Boolean(bankDetails.bsb && bankDetails.accountNumber);
+}
+
 export const nav = [
   { href: "/", label: "Home" },
   { href: "/services", label: "Services" },

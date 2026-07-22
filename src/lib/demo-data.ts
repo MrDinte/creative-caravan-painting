@@ -1,4 +1,5 @@
 import type {
+  Invoice,
   TimesheetEntry,
   ContactSubmission,
   GalleryItem,
@@ -307,3 +308,63 @@ export const demoQuotes: Quote[] = [
 
 export const demoContacts: ContactSubmission[] = [];
 export const demoOrders: OrderEnquiry[] = [];
+
+// One settled invoice and one part-paid, so the portal's payment progress bar
+// has something meaningful to show in the demo.
+export const demoInvoices: Invoice[] = [
+  {
+    id: "inv1",
+    invoiceNumber: "INV-2026-001",
+    jobId: "j1",
+    customerName: "Sarah Mitchell",
+    customerEmail: "sarah@example.com",
+    status: "sent",
+    issuedDate: "2026-07-15",
+    dueDate: "2026-07-29",
+    notes: "50% deposit received. Balance due on collection.",
+    lines: [
+      { id: "il1", description: "Full exterior respray — 2 pac (single axle van)", qty: 1, unitPriceCents: 650000 },
+      { id: "il2", description: "Feature band / two-tone upgrade", qty: 1, unitPriceCents: 120000 },
+    ],
+    payments: [
+      {
+        id: "pay1",
+        invoiceId: "inv1",
+        amountCents: 423500,
+        method: "bank",
+        reference: "Deposit — CBA transfer",
+        paidAt: "2026-07-15T04:00:00.000Z",
+        recordedBy: "Tim",
+      },
+    ],
+    createdAt: "2026-07-15T03:00:00.000Z",
+  },
+  {
+    id: "inv2",
+    invoiceNumber: "INV-2026-002",
+    jobId: "j4",
+    customerName: "Dave Carter",
+    customerEmail: "dave@example.com",
+    status: "paid",
+    issuedDate: "2026-07-20",
+    dueDate: "2026-08-03",
+    notes: "Paid in full on collection. Thanks Dave!",
+    lines: [
+      { id: "il3", description: "Roof reseal — Globalcote", qty: 1, unitPriceCents: 185000 },
+      { id: "il4", description: "Vinyl flooring supply & lay", qty: 8, unitPriceCents: 14500 },
+      { id: "il5", description: "Gas lift bed install", qty: 1, unitPriceCents: 145000 },
+    ],
+    payments: [
+      {
+        id: "pay2",
+        invoiceId: "inv2",
+        amountCents: 495000,
+        method: "card",
+        reference: "EFTPOS on collection",
+        paidAt: "2026-07-22T02:00:00.000Z",
+        recordedBy: "Tim",
+      },
+    ],
+    createdAt: "2026-07-20T01:00:00.000Z",
+  },
+];

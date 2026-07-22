@@ -250,6 +250,118 @@ export function formatAud(cents: number): string {
   }).format(cents / 100);
 }
 
+// ---------- Invoicing ----------
+
+export type InvoiceStatus = "draft" | "sent" | "paid" | "cancelled";
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  draft: "Draft",
+  sent: "Sent",
+  paid: "Paid",
+  cancelled: "Cancelled",
+};
+
+export type PaymentMethod = "stripe" | "bank" | "cash" | "card";
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  stripe: "Card (Stripe)",
+  bank: "Bank transfer",
+  cash: "Cash",
+  card: "Card (in person)",
+};
+
+export interface InvoiceLine {
+  id: string;
+  description: string;
+  qty: number;
+  unitPriceCents: number;
+}
+
+export interface Payment {
+  id: string;
+  invoiceId: string;
+  amountCents: number;
+  method: PaymentMethod;
+  reference: string;
+  paidAt: string;
+  recordedBy: string;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string; // INV-2026-001
+  jobId: string; // "" when not tied to a job
+  customerName: string;
+  customerEmail: string;
+  status: InvoiceStatus;
+  issuedDate: string; // ISO date
+  dueDate: string; // ISO date
+  notes: string;
+  lines: InvoiceLine[];
+  payments: Payment[];
+  createdAt: string;
+}
+
+export function invoiceSubtotalCents(inv: Pick<Invoice, "lines">): number {
+  return inv.lines.reduce((sum, l) => sum + l.qty * l.unitPriceCents, 0);
+}
+
+export function invoiceTotalCents(inv: Pick<Invoice, "lines">): number {
+  const sub = invoiceSubtotalCents(inv);
+  return sub + gstCents(sub);
+}
+
+export function invoicePaidCents(inv: Pick<Invoice, "payments">): number {
+  return inv.payments.reduce((sum, p) => sum + p.amountCents, 0);
+}
+
+export function invoiceBalanceCents(
+  inv: Pick<Invoice, "lines" | "payments">
+): number {
+  return Math.max(0, invoiceTotalCents(inv) - invoicePaidCents(inv));
+}
+
+/** 0–100, for the payment progress bar. */
+export function invoicePaidPercent(
+  inv: Pick<Invoice, "lines" | "payments">
+): number {
+  const total = invoiceTotalCents(inv);
+  if (total <= 0) return 0;
+  return Math.min(100, Math.round((invoicePaidCents(inv) / total) * 100));
+}
+
+export function isInvoiceSettled(
+  inv: Pick<Invoice, "lines" | "payments" | "status">
+): boolean {
+  if (inv.status === "cancelled") return false;
+  return invoiceTotalCents(inv) > 0 && invoiceBalanceCents(inv) === 0;
+}
+
+export function isInvoiceOverdue(
+  inv: Pick<Invoice, "lines" | "payments" | "status" | "dueDate">,
+  today = new Date().toISOString().slice(0, 10)
+): boolean {
+  if (inv.status !== "sent") return false;
+  return inv.dueDate < today && invoiceBalanceCents(inv) > 0;
+}
+
+/**
+ * What the customer should see: the explicit status, unless payments or the
+ * due date tell a truer story.
+ */
+export function invoiceDisplayStatus(
+  inv: Pick<Invoice, "lines" | "payments" | "status" | "dueDate">
+): { label: string; tone: "slate" | "brand" | "green" | "amber" | "red" } {
+  if (inv.status === "cancelled") return { label: "Cancelled", tone: "slate" };
+  if (inv.status === "draft") return { label: "Draft", tone: "slate" };
+  if (isInvoiceSettled(inv)) return { label: "Paid in full", tone: "green" };
+  if (invoicePaidCents(inv) > 0) {
+    return { label: "Part paid", tone: "amber" };
+  }
+  if (isInvoiceOverdue(inv)) return { label: "Overdue", tone: "red" };
+  return { label: "Awaiting payment", tone: "brand" };
+}
+
 export const JOB_STATUS_LABELS: Record<JobStatus, string> = {
   booked: "Booked In",
   in_progress: "In Progress",

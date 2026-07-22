@@ -20,6 +20,7 @@ export const ADMIN_ONLY_PATHS = [
   "/admin/staff",
   "/admin/prices",
   "/admin/quotes",
+  "/admin/invoices",
   "/admin/enquiries",
 ] as const;
 

@@ -45,7 +45,8 @@ test.describe("Customer portal — logged in", () => {
     await expect(page.getByText("CCP-2026-001").first()).toBeVisible();
     await expect(page.getByText("In Progress").first()).toBeVisible();
 
-    const progressbar = page.getByRole("progressbar");
+    // The page now carries two: job completion and payment progress.
+    const progressbar = page.getByRole("progressbar", { name: "Job completion" });
     await expect(progressbar).toBeVisible();
     await expect(page.getByTestId("portal-progress")).toContainText(/of 5 tasks/);
   });

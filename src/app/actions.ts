@@ -10,6 +10,7 @@ import {
   createQuote,
   createStaff,
   createTask,
+  createInvoice,
   createTimesheetEntry,
   clearShift,
   deactivateStaff,
@@ -17,11 +18,16 @@ import {
   deletePriceBookItem,
   findJobByCredentials,
   findPriceBookItemByCode,
+  getInvoice,
+  getJob,
   getOpenShift,
   getQuote,
   getStaff,
   isUsernameTaken,
+  listQuotes,
   nextJobCode,
+  recordPayment,
+  setInvoiceStatus,
   removeStaffLogin,
   setStaffLogin,
   setStaffPayroll,
@@ -45,12 +51,14 @@ import { hashPassword, passwordProblem } from "@/lib/password";
 import { brisbaneDate, brisbaneTime, hoursBetween } from "@/lib/brisbane";
 import type {
   AccessLevel,
+  InvoiceStatus,
   JobLocation,
+  PaymentMethod,
   JobStatus,
   QuoteStatus,
   TaskStatus,
 } from "@/lib/types";
-import { JOB_LOCATIONS } from "@/lib/types";
+import { JOB_LOCATIONS, formatAud, invoiceBalanceCents } from "@/lib/types";
 
 function parseLocation(v: FormDataEntryValue | null): JobLocation {
   const s = String(v ?? "");
@@ -469,6 +477,143 @@ export async function addTimesheetEntryAction(
 
   revalidatePath("/admin/timesheets");
   return { ok: true, message: `Logged ${hours} h on ${workDate}.` };
+}
+
+// ---------- Invoicing ----------
+
+export async function createInvoiceAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  await requireFullAdmin();
+
+  const customerName = String(formData.get("customerName") ?? "").trim();
+  const dueDate = String(formData.get("dueDate") ?? "");
+  const linesRaw = String(formData.get("lines") ?? "[]");
+
+  if (!customerName) return { ok: false, message: "Customer name is required." };
+  if (!dueDate) return { ok: false, message: "Pick a due date." };
+
+  let parsed: { description: string; qty: number; unitPriceCents: number }[];
+  try {
+    parsed = JSON.parse(linesRaw);
+  } catch {
+    return { ok: false, message: "Invoice lines could not be read." };
+  }
+
+  const lines = parsed.filter((l) => l.description.trim() && l.qty > 0);
+  if (!lines.length) {
+    return { ok: false, message: "Add at least one line to the invoice." };
+  }
+
+  const invoice = await createInvoice({
+    jobId: String(formData.get("jobId") ?? ""),
+    customerName,
+    customerEmail: String(formData.get("customerEmail") ?? "").trim(),
+    status: "draft",
+    issuedDate: new Date().toISOString().slice(0, 10),
+    dueDate,
+    notes: String(formData.get("notes") ?? "").trim(),
+    lines,
+  });
+
+  revalidatePath("/admin/invoices");
+  redirect(`/admin/invoices/${invoice.id}`);
+}
+
+export async function setInvoiceStatusAction(formData: FormData) {
+  await requireFullAdmin();
+  const id = String(formData.get("invoiceId"));
+  const status = String(formData.get("status")) as InvoiceStatus;
+  await setInvoiceStatus(id, status);
+  revalidatePath("/admin/invoices");
+  revalidatePath(`/admin/invoices/${id}`);
+  revalidatePath("/portal/job");
+}
+
+export async function recordPaymentAction(
+  _prev: FormState,
+  formData: FormData
+): Promise<FormState> {
+  const session = await requireFullAdmin();
+
+  const invoiceId = String(formData.get("invoiceId"));
+  const amount = Number(formData.get("amount") ?? 0);
+  const method = String(formData.get("method") ?? "bank") as PaymentMethod;
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, message: "Enter a payment amount." };
+  }
+
+  const invoice = await getInvoice(invoiceId);
+  if (!invoice) return { ok: false, message: "That invoice no longer exists." };
+
+  const amountCents = Math.round(amount * 100);
+  const balance = invoiceBalanceCents(invoice);
+  if (amountCents > balance) {
+    return {
+      ok: false,
+      message: `That's more than the ${formatAud(balance)} outstanding. Enter ${formatAud(balance)} or less.`,
+    };
+  }
+
+  await recordPayment(invoiceId, {
+    amountCents,
+    method,
+    reference: String(formData.get("reference") ?? "").trim(),
+    paidAt: new Date().toISOString(),
+    recordedBy: session.name,
+  });
+
+  revalidatePath(`/admin/invoices/${invoiceId}`);
+  revalidatePath("/admin/invoices");
+  revalidatePath("/portal/job");
+
+  const after = await getInvoice(invoiceId);
+  const remaining = after ? invoiceBalanceCents(after) : 0;
+  return {
+    ok: true,
+    message:
+      remaining === 0
+        ? `${formatAud(amountCents)} recorded — invoice paid in full.`
+        : `${formatAud(amountCents)} recorded. ${formatAud(remaining)} still outstanding.`,
+  };
+}
+
+/** Builds an invoice straight from a job's accepted quote lines. */
+export async function invoiceFromJobAction(formData: FormData) {
+  await requireFullAdmin();
+  const jobId = String(formData.get("jobId"));
+  const job = await getJob(jobId);
+  if (!job) return;
+
+  const quotes = await listQuotes();
+  const accepted = quotes.find(
+    (q) => q.status === "accepted" && q.customerName === job.customerName
+  );
+
+  const lines = accepted?.lines.length
+    ? accepted.lines.map((l) => ({
+        description: l.description,
+        qty: l.qty,
+        unitPriceCents: l.unitPriceCents,
+      }))
+    : [{ description: job.title, qty: 1, unitPriceCents: 0 }];
+
+  const invoice = await createInvoice({
+    jobId: job.id,
+    customerName: job.customerName,
+    customerEmail: job.customerEmail,
+    status: "draft",
+    issuedDate: new Date().toISOString().slice(0, 10),
+    // Two weeks is the workshop's normal term.
+    dueDate: new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10),
+    notes: accepted ? `From quote ${accepted.quoteNumber}.` : "",
+    lines,
+  });
+
+  revalidatePath("/admin/invoices");
+  redirect(`/admin/invoices/${invoice.id}`);
 }
 
 // ---------- Clock on / off ----------

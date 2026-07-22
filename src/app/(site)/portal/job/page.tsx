@@ -3,7 +3,9 @@ import { redirect } from "next/navigation";
 import { Badge, Button, Card, Section } from "@/components/ui";
 import { customerLogout } from "@/app/actions";
 import { getCustomerSession } from "@/lib/auth";
-import { getJob, listTasks, listUpdates } from "@/lib/db";
+import { getJob, listInvoices, listTasks, listUpdates } from "@/lib/db";
+import { PortalInvoices } from "@/components/PortalInvoices";
+import { isStripeConfigured } from "@/lib/stripe";
 import { JOB_STATUS_LABELS, TASK_STATUS_LABELS } from "@/lib/types";
 import type { JobStatus } from "@/lib/types";
 import { site } from "@/lib/site";
@@ -45,9 +47,10 @@ export default async function PortalJobPage() {
   const job = await getJob(session.jobId);
   if (!job) redirect("/portal");
 
-  const [tasks, updates] = await Promise.all([
+  const [tasks, updates, invoices] = await Promise.all([
     listTasks(job.id),
     listUpdates(job.id, true),
+    listInvoices(job.id),
   ]);
 
   const done = tasks.filter((t) => t.status === "done").length;
@@ -235,6 +238,8 @@ export default async function PortalJobPage() {
           </Card>
         </div>
       </div>
+
+      <PortalInvoices invoices={invoices} stripeEnabled={isStripeConfigured()} />
 
       <Card className="mt-8 bg-slate-50 p-6">
         <h2 className="font-display text-lg font-bold text-slate-900">

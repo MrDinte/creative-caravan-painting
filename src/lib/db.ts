@@ -11,6 +11,7 @@ import {
   demoStaffPasswords,
   demoTasks,
   demoTimesheets,
+  demoInvoices,
   demoUpdates,
 } from "./demo-data";
 import type {
@@ -20,6 +21,10 @@ import type {
   Job,
   JobLocation,
   JobStatus,
+  Invoice,
+  InvoiceLine,
+  InvoiceStatus,
+  Payment,
   Staff,
   TimesheetEntry,
   JobUpdate,
@@ -32,7 +37,7 @@ import type {
   Task,
   TaskStatus,
 } from "./types";
-import { PAYROLL_DEFAULTS } from "./types";
+import { PAYROLL_DEFAULTS, isInvoiceSettled } from "./types";
 import { getAdminSession, getCustomerSession } from "./session";
 
 // Data layer with two backends:
@@ -57,6 +62,7 @@ interface MemoryStore {
   timesheets: TimesheetEntry[];
   staffPasswords: Record<string, string>;
   openShifts: Record<string, OpenShift>;
+  invoices: Invoice[];
 }
 
 const globalStore = globalThis as unknown as { __ccpStore?: MemoryStore };
@@ -77,6 +83,7 @@ function mem(): MemoryStore {
       timesheets: structuredClone(demoTimesheets),
       staffPasswords: { ...demoStaffPasswords },
       openShifts: {},
+      invoices: structuredClone(demoInvoices),
     };
   }
   return globalStore.__ccpStore;
@@ -644,6 +651,169 @@ export async function createTimesheetEntry(
     return entry;
   }
   mem().timesheets.push(entry);
+  return entry;
+}
+
+// ---------- Invoices ----------
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const invoiceFromRow = (
+  r: any,
+  lines: InvoiceLine[],
+  payments: Payment[]
+): Invoice => ({
+  id: r.id,
+  invoiceNumber: r.invoice_number,
+  jobId: r.job_id ?? "",
+  customerName: r.customer_name,
+  customerEmail: r.customer_email ?? "",
+  status: r.status,
+  issuedDate: toDateStr(r.issued_date),
+  dueDate: toDateStr(r.due_date),
+  notes: r.notes ?? "",
+  lines,
+  payments,
+  createdAt: toIsoStr(r.created_at),
+});
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+export async function listInvoices(jobId?: string): Promise<Invoice[]> {
+  if (hasDatabase()) {
+    const rows = jobId
+      ? await sql()`select * from invoices where job_id = ${jobId} order by created_at desc`
+      : await sql()`select * from invoices order by created_at desc`;
+    if (rows.length === 0) return [];
+
+    const [lineRows, payRows] = await Promise.all([
+      sql()`select * from invoice_lines order by created_at`,
+      sql()`select * from payments order by paid_at`,
+    ]);
+
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    return rows.map((r: any) =>
+      invoiceFromRow(
+        r,
+        lineRows
+          .filter((l: any) => l.invoice_id === r.id)
+          .map((l: any) => ({
+            id: l.id,
+            description: l.description,
+            qty: Number(l.qty),
+            unitPriceCents: Number(l.unit_price_cents),
+          })),
+        payRows
+          .filter((p: any) => p.invoice_id === r.id)
+          .map((p: any) => ({
+            id: p.id,
+            invoiceId: p.invoice_id,
+            amountCents: Number(p.amount_cents),
+            method: p.method,
+            reference: p.reference ?? "",
+            paidAt: toIsoStr(p.paid_at),
+            recordedBy: p.recorded_by ?? "",
+          }))
+      )
+    );
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  }
+
+  const all = [...mem().invoices].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt)
+  );
+  return jobId ? all.filter((i) => i.jobId === jobId) : all;
+}
+
+export async function getInvoice(id: string): Promise<Invoice | null> {
+  return (await listInvoices()).find((i) => i.id === id) ?? null;
+}
+
+export async function nextInvoiceNumber(): Promise<string> {
+  const year = new Date().getFullYear();
+  const invoices = await listInvoices();
+  const nums = invoices
+    .map((i) => /^INV-(\d{4})-(\d+)$/.exec(i.invoiceNumber))
+    .filter((m): m is RegExpExecArray => !!m && Number(m[1]) === year)
+    .map((m) => Number(m[2]));
+  const next = (nums.length ? Math.max(...nums) : 0) + 1;
+  return `INV-${year}-${String(next).padStart(3, "0")}`;
+}
+
+export async function createInvoice(
+  input: Omit<
+    Invoice,
+    "id" | "createdAt" | "invoiceNumber" | "lines" | "payments"
+  > & { lines: Omit<InvoiceLine, "id">[] }
+): Promise<Invoice> {
+  const invoice: Invoice = {
+    ...input,
+    id: makeId(),
+    invoiceNumber: await nextInvoiceNumber(),
+    createdAt: new Date().toISOString(),
+    lines: input.lines.map((l) => ({ ...l, id: makeId() })),
+    payments: [],
+  };
+
+  if (hasDatabase()) {
+    await sql()`
+      insert into invoices (id, invoice_number, job_id, customer_name, customer_email,
+                            status, issued_date, due_date, notes, created_at)
+      values (${invoice.id}, ${invoice.invoiceNumber}, ${invoice.jobId || null},
+              ${invoice.customerName}, ${invoice.customerEmail}, ${invoice.status},
+              ${invoice.issuedDate}, ${invoice.dueDate}, ${invoice.notes},
+              ${invoice.createdAt})`;
+    for (const l of invoice.lines) {
+      await sql()`
+        insert into invoice_lines (id, invoice_id, description, qty, unit_price_cents)
+        values (${l.id}, ${invoice.id}, ${l.description}, ${l.qty}, ${l.unitPriceCents})`;
+    }
+    return invoice;
+  }
+  mem().invoices.push(invoice);
+  return invoice;
+}
+
+export async function setInvoiceStatus(
+  id: string,
+  status: InvoiceStatus
+): Promise<Invoice | null> {
+  if (hasDatabase()) {
+    await sql()`update invoices set status = ${status} where id = ${id}`;
+    return getInvoice(id);
+  }
+  const inv = mem().invoices.find((i) => i.id === id);
+  if (inv) inv.status = status;
+  return inv ?? null;
+}
+
+export async function recordPayment(
+  invoiceId: string,
+  payment: Omit<Payment, "id" | "invoiceId">,
+  stripeSessionId?: string
+): Promise<Payment | null> {
+  const entry: Payment = { ...payment, id: makeId(), invoiceId };
+
+  if (hasDatabase()) {
+    // Unique stripe_session_id makes a replayed webhook a no-op.
+    const rows = await sql()`
+      insert into payments (id, invoice_id, amount_cents, method, reference,
+                            paid_at, recorded_by, stripe_session_id)
+      values (${entry.id}, ${invoiceId}, ${entry.amountCents}, ${entry.method},
+              ${entry.reference}, ${entry.paidAt}, ${entry.recordedBy},
+              ${stripeSessionId ?? null})
+      on conflict (stripe_session_id) do nothing
+      returning id`;
+    if (rows.length === 0) return null;
+  } else {
+    const inv = mem().invoices.find((i) => i.id === invoiceId);
+    if (!inv) return null;
+    inv.payments.push(entry);
+  }
+
+  // Close the invoice off automatically once nothing is outstanding.
+  const updated = await getInvoice(invoiceId);
+  if (updated && updated.status === "sent" && isInvoiceSettled(updated)) {
+    await setInvoiceStatus(invoiceId, "paid");
+  }
   return entry;
 }
 
